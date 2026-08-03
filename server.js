@@ -6207,8 +6207,9 @@ const server = http.createServer(async (req, res) => {
       const hash = url.searchParams.get('hash') || url.searchParams.get('id') || '';
       const albumAudioId = url.searchParams.get('albumAudioId') || url.searchParams.get('album_audio_id') || '';
       const duration = url.searchParams.get('duration') || '';
+      const mode = url.searchParams.get('mode') || 'all';
       if (!hash) { sendJSON(res, { provider: 'kugou', error: 'Missing Kugou hash', lyric: '' }, 400); return; }
-      const data = await handleKugouLyric(hash, albumAudioId, duration);
+      const data = await handleKugouLyric(hash, albumAudioId, duration, mode);
       sendJSON(res, data);
     } catch (err) {
       console.error('[KugouLyric]', err);

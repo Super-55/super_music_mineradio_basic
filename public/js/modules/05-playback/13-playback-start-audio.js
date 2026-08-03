@@ -924,15 +924,32 @@ async function playQueueAt(idx, opts) {
     }
     var sameAlbumCoverSwitch = albumGaplessSameAlbumCover(previousSongForTransition, song);
     var earlyLyricFetchStarted = false;
+    var trackLyricFetchPromise = null;
+    var trackLyricPlaybackGate = null;
     function startTrackLyricFetch() {
-      if (earlyLyricFetchStarted) return false;
-      if (!song || song.type === 'podcast' || song.type === 'local' || song.source === 'local' || song.localUrl) return false;
-      if (typeof fetchLyric !== 'function') return false;
+      if (earlyLyricFetchStarted) return trackLyricFetchPromise;
+      if (!song || song.type === 'podcast' || song.type === 'local' || song.source === 'local' || song.localUrl) return null;
+      if (typeof fetchLyric !== 'function') return null;
       earlyLyricFetchStarted = true;
-      setTimeout(function () {
-        if (token === trackSwitchToken) fetchLyric(song, token);
-      }, 0);
-      return true;
+      trackLyricFetchPromise = Promise.resolve().then(function () {
+        if (token !== trackSwitchToken) return null;
+        return fetchLyric(song, token);
+      }).catch(function () { return null; });
+      trackLyricPlaybackGate = Promise.race([
+        trackLyricFetchPromise,
+        new Promise(function (resolve) { setTimeout(function () { resolve(null); }, 800); })
+      ]);
+      return trackLyricFetchPromise;
+    }
+    function shouldGateTrackLyricPlayback() {
+      return !!(
+        trackLyricPlaybackGate
+        && !qualitySwitch
+        && !albumGaplessHandoff
+        && !opts.cuefieldAutoMix
+        && !opts.resumeRecovery
+        && songProviderKey(song) === 'kugou'
+      );
     }
     var restoreResumeAt = 0;
     if (
@@ -1139,7 +1156,7 @@ async function playQueueAt(idx, opts) {
         audio.pause();
       }
       resetPlaybackAudioGraphForSourceSwitch(albumGaplessHandoff ? 'album-gapless-handoff' : 'track-switch');
-      audio.autoplay = true;
+      audio.autoplay = !shouldGateTrackLyricPlayback();
       audio.preload = 'auto';
       // resetPlaybackAudioGraphForSourceSwitch may deliberately replace a
       // capture-backed element before a new src is assigned. Capture the
@@ -1239,6 +1256,12 @@ async function playQueueAt(idx, opts) {
         beatMapNextIdx = 0;
         safePlaybackStep('visual-prep-hide-chip', hideBeatChip);
       }
+      if (shouldGateTrackLyricPlayback()) {
+        markPlayPhase('lyric-readiness');
+        await trackLyricPlaybackGate;
+        if (!playbackInvocationStillCurrent(playbackMedia)) return false;
+      }
+      playbackMedia.autoplay = true;
       markPlayPhase('audio-start');
       if (!playbackInvocationStillCurrent(playbackMedia)) return false;
       var playbackStarted = await playAudio({ manual: !!opts.manual, silent: !!opts.startupAutoplay || !opts.manual, startupAutoplay: !!opts.startupAutoplay, trackSwitch: true, resumeRecovery: !!opts.resumeRecovery, fade: albumGaplessHandoff ? false : opts.fade, preserveGain: albumGaplessMixed, expectedMedia: playbackMedia, expectedToken: token });

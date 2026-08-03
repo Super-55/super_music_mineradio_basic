@@ -11,7 +11,7 @@ function lyricTranslationTextFromAliases(source) {
   source = source || {};
   return source.tlyric || source.trans || source.translatedLyric || source.translation || source.translated_lyric || '';
 }
-function lyricEndpointForSong(songOrId) {
+function lyricEndpointForSong(songOrId, mode) {
   var song = (songOrId && typeof songOrId === 'object') ? songOrId : null;
   var provider = song ? songProviderKey(song) : 'netease';
   if (provider === 'qq') {
@@ -20,9 +20,11 @@ function lyricEndpointForSong(songOrId) {
     return '/api/qq/lyric?mid=' + encodeURIComponent(mid) + '&id=' + encodeURIComponent(qqId);
   }
   if (provider === 'kugou') {
-    return '/api/kugou/lyric?hash=' + encodeURIComponent(song.hash || song.fileHash || song.audioHash || song.id || '') +
+    var endpoint = '/api/kugou/lyric?hash=' + encodeURIComponent(song.hash || song.fileHash || song.FileHash || song.audioHash || song.AudioHash || song.id || '') +
       '&albumAudioId=' + encodeURIComponent(song.albumAudioId || song.album_audio_id || song.mixSongId || '') +
       '&duration=' + encodeURIComponent(playbackDurationFromSong(song) || '');
+    if (mode === 'original' || mode === 'translation') endpoint += '&mode=' + mode;
+    return endpoint;
   }
   if (provider === 'qishui') {
     return '/api/qishui/lyric?id=' + encodeURIComponent(song.id || song.providerSongId || '');
@@ -32,6 +34,20 @@ function lyricEndpointForSong(songOrId) {
   }
   var songId = song ? song.id : songOrId;
   return '/api/lyric?id=' + encodeURIComponent(songId);
+}
+
+function fetchKugouLyricPhases(song, token) {
+  var translationPromise = apiJson(lyricEndpointForSong(song, 'translation')).catch(function () { return null; });
+  return apiJson(lyricEndpointForSong(song, 'original')).then(function (originalResponse) {
+    var originalState = applyFetchedLyricResponse(song, token, originalResponse || {});
+    if (!originalState || token !== trackSwitchToken) return originalState;
+    translationPromise.then(function (translationResponse) {
+      if (!translationResponse || token !== trackSwitchToken) return;
+      var mergedResponse = Object.assign({}, originalResponse || {}, translationResponse || {});
+      applyFetchedLyricResponse(song, token, mergedResponse);
+    });
+    return originalState;
+  });
 }
 
 function persistentLyricCacheKey(song) {
@@ -230,20 +246,27 @@ async function fetchLyric(songOrId, token, attempt) {
       var cachedState = applyFetchedLyricResponse(song, token, cachedResponse, { persist: false });
       if (cachedState && cachedState.usableLyric) {
         refreshPersistentLyricCache(song);
-        return;
+        return cachedState;
       }
     }
-    var r = await apiJson(lyricEndpointForSong(song || songOrId));
-    var state = applyFetchedLyricResponse(song, token, r);
-    if (!state) return;
+    var state;
+    if (song && songProviderKey(song) === 'kugou') {
+      state = await fetchKugouLyricPhases(song, token);
+    } else {
+      var r = await apiJson(lyricEndpointForSong(song || songOrId));
+      state = applyFetchedLyricResponse(song, token, r);
+    }
+    if (!state) return null;
     if (!state.usableLyric && shouldRetryStartupLyricFetch(song, token, attempt)) scheduleStartupLyricFetchRetry(song, token, attempt);
+    return state;
   } catch (e) {
-    if (token !== trackSwitchToken) return;
+    if (token !== trackSwitchToken) return null;
     cancelPendingTrackFallbackLyrics();
     var fallbackLines = withLyricFallbackForSong(song || currentLyricSong(), []);
     setOriginalLyricsState(fallbackLines, false, 'fallback', [], 'none');
     applyPreferredLyricsForCurrent(true);
     if (shouldRetryStartupLyricFetch(song, token, attempt)) scheduleStartupLyricFetchRetry(song, token, attempt);
+    return null;
   }
 }
 function currentLyricFallbackText() {

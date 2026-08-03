@@ -68,6 +68,7 @@ const kugouSongUrlCache = createKugouTtlCache(240, 15 * 60 * 1000);
 const kugouPlaylistTracksCache = createKugouTtlCache(24, 5 * 60 * 1000);
 const kugouProfileCache = createKugouTtlCache(24, 5 * 60 * 1000);
 const kugouVipCache = createKugouTtlCache(24, 5 * 60 * 1000);
+const kugouLyricCandidateCache = createKugouTtlCache(240, 10 * 60 * 1000);
 const KUGOU_H5_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
 const KUGOU_QUALITY_CHAIN = [
@@ -1340,21 +1341,62 @@ function kugouLyricDownloadUrl(candidate, format) {
   return dl.toString();
 }
 
-async function handleKugouLyric(hash, albumAudioId, durationSec) {
+function normalizeKugouLyricMode(mode) {
+  mode = String(mode || 'all').trim().toLowerCase();
+  return mode === 'original' || mode === 'translation' ? mode : 'all';
+}
+
+async function findKugouLyricCandidate(fileHash, albumAudioId, durationSec) {
+  const cacheKey = [
+    String(fileHash || '').toLowerCase(),
+    String(albumAudioId || ''),
+    String(Math.max(0, Number(durationSec) || 0)),
+  ].join('|');
+  return kugouLyricCandidateCache.wrap(cacheKey, 10 * 60 * 1000, async () => {
+    const u = new URL(KUGOU_LYRIC_SEARCH);
+    u.searchParams.set('ver', '1');
+    u.searchParams.set('man', 'yes');
+    u.searchParams.set('client', 'pc');
+    u.searchParams.set('keyword', '');
+    u.searchParams.set('duration', String(Math.max(0, Number(durationSec) || 0)));
+    u.searchParams.set('hash', fileHash);
+    if (albumAudioId) u.searchParams.set('album_audio_id', albumAudioId);
+    const search = await requestJson(u.toString(), { headers: KUGOU_HEADERS });
+    return search && Array.isArray(search.candidates) && search.candidates[0] || null;
+  });
+}
+
+async function handleKugouLyric(hash, albumAudioId, durationSec, mode) {
   const fileHash = String(hash || '').trim();
   if (!fileHash) return { provider: 'kugou', error: 'Missing Kugou hash', lyric: '' };
-  const u = new URL(KUGOU_LYRIC_SEARCH);
-  u.searchParams.set('ver', '1');
-  u.searchParams.set('man', 'yes');
-  u.searchParams.set('client', 'pc');
-  u.searchParams.set('keyword', '');
-  u.searchParams.set('duration', String(Math.max(0, Number(durationSec) || 0)));
-  u.searchParams.set('hash', fileHash);
-  if (albumAudioId) u.searchParams.set('album_audio_id', albumAudioId);
-  const search = await requestJson(u.toString(), { headers: KUGOU_HEADERS });
-  const candidate = search && Array.isArray(search.candidates) && search.candidates[0];
+  const lyricMode = normalizeKugouLyricMode(mode);
+  const candidate = await findKugouLyricCandidate(fileHash, albumAudioId, durationSec);
   if (!candidate || !candidate.id) {
     return { provider: 'kugou', hash: fileHash, lyric: '', trans: '' };
+  }
+  if (lyricMode === 'original') {
+    try {
+      const lrcJson = await requestJson(kugouLyricDownloadUrl(candidate, 'lrc'), { headers: KUGOU_HEADERS });
+      return {
+        provider: 'kugou',
+        hash: fileHash,
+        lyric: decodeKugouLyricContent(lrcJson && lrcJson.content),
+        trans: '',
+        tlyric: '',
+        translationPending: true,
+      };
+    } catch (_) {
+      return { provider: 'kugou', hash: fileHash, lyric: '', trans: '', tlyric: '', translationPending: true };
+    }
+  }
+  if (lyricMode === 'translation') {
+    try {
+      const krcJson = await requestJson(kugouLyricDownloadUrl(candidate, 'krc'), { headers: KUGOU_HEADERS });
+      const translated = extractKugouKrcTranslation(decodeKugouKrcContent(krcJson && krcJson.content));
+      return { provider: 'kugou', hash: fileHash, lyric: '', trans: translated, tlyric: translated };
+    } catch (_) {
+      return { provider: 'kugou', hash: fileHash, lyric: '', trans: '', tlyric: '' };
+    }
   }
   const downloads = await Promise.allSettled([
     requestJson(kugouLyricDownloadUrl(candidate, 'lrc'), { headers: KUGOU_HEADERS }),
