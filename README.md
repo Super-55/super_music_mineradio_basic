@@ -2,73 +2,80 @@
 
 ![Mineradio 暗场启动页](./docs/assets/readme/cinema-beat-smoke.png)
 
-Mineradio 是一款 Windows 桌面沉浸式音乐播放器，把搜索播放、歌词舞台、粒子视觉、3D 歌单架和完整桌面模式组合成一个更接近现场感的私人音乐空间。
+Mineradio 是一款 Windows 桌面沉浸式音乐播放器，把在线音乐、本地音乐、播客、歌词舞台、粒子视觉、3D 歌单架和完整桌面模式组合成更接近现场感的私人音乐空间。当前仓库是由 `Super` 在原 Mineradio 项目基础上持续改造和维护的酷狗概念版专属版本。
 
-## 立即下载 Windows 安装包
+## 下载 super_mineradio_s
 
-> 国内 GitHub 用户可优先使用蓝奏云下载；其他用户可直接使用 GitHub Release。
+| 内容 | 链接 |
+| --- | --- |
+| GitHub Release | [super_mineradio_s v1.0.0](https://github.com/Super-55/super_music_mineradio_basic/releases/tag/v1.0.0) |
+| Windows x64 安装包 | [下载 super_mineradio_s.exe](https://github.com/Super-55/super_music_mineradio_basic/releases/download/v1.0.0/super_mineradio_s.exe) |
+| SHA-256 校验文件 | [下载 super_mineradio_s.exe.sha256](https://github.com/Super-55/super_music_mineradio_basic/releases/download/v1.0.0/super_mineradio_s.exe.sha256) |
 
-| 下载入口 | 推荐人群 | 链接 |
-| --- | --- | --- |
-| 蓝奏云满速下载 | 国内用户优先 | [下载 Mineradio 2.0.1 安装包](https://xxhuber.lanzout.com/s/Mineradio) |
-| GitHub 仓库 | GitHub 用户 | [Super-55/super_music_mineradio_basic](https://github.com/Super-55/super_music_mineradio_basic) |
-
-安装时只需要下载并运行 `Mineradio-2.0.1-Setup.exe`。不要把 `.blockmap`、`latest.yml` 或 `win-unpacked` 当成正式安装包。
-
-## 下载或安装被拦截怎么办
-
-小众 Electron 桌面软件、未签名安装包有时会被浏览器、Windows Defender 或 SmartScreen 提示风险。请先确认安装包来自上面的蓝奏云或 GitHub Release 官方入口，文件名是 `Mineradio-2.0.1-Setup.exe`。
-
-1. 浏览器下载栏提示风险时，打开下载列表，点这条下载右侧的 `...` 三个点，选择 `保留` / `仍要保留` / `显示更多` 后继续保留。
-2. Windows SmartScreen 弹出蓝色拦截窗口时，点 `更多信息`，再点 `仍要运行`。
-3. 如果杀毒软件明确显示木马、高危或已经隔离，不要强行运行；删除该文件后重新从蓝奏云或 GitHub Release 下载，仍然异常请带截图反馈给作者。
-
-## 作者支持
-
-如果 Mineradio 陪你多听了一首歌，也欢迎请作者一杯咖啡。
-
-[查看完整支持页](./docs/SUPPORT.md)
-
-![Mineradio 作者支持渠道](./docs/assets/support/mineradio-author-support-poster.png)
-
-Mineradio 2.0 重新整理了视觉层次、桌面模式、主页与搜索体验，并收紧了连续播放、启动和后台性能表现。
+正式安装请使用 `super_mineradio_s.exe`，不要把 `.blockmap`、`latest.yml` 或 `win-unpacked` 当作安装包。
 
 ## 当前版本
 
-当前版本：`2.0.1`
+- 应用内部版本：`2.0.2`
+- Super 定制发行标签：`v1.0.0`
+- 内部应用名：`Mineradio`
 
-状态：Mineradio 2.0.1 正式版。
+`2.0.2` 用于应用和安装升级识别；`v1.0.0` 是 `super_mineradio_s` 定制发行系列的首个 GitHub Release。
 
-> 安全提示：`v1.0.10` 及更早旧安装包不再建议继续安装或传播。请使用本页提供的 `Mineradio-2.0.1-Setup.exe`。
+## Super 的改造与维护
 
-## 核心特性
+这个版本不是简单更换名称或界面。`Super` 围绕账号协议、服务端路由、播放状态机、歌词时序、缓存策略、Electron 安全边界和 Windows 发行流程进行了持续调整与验证。
 
-- 账号体系只保留酷狗概念版：默认二维码登录，短信验证码备用，支持安全恢复会话、资料、创建/收藏歌单和继续收听
-- 酷狗登录令牌仅由 Electron 主进程管理，并使用 Windows 安全存储加密；不写入网页存储或明文 Cookie 文件
-- 网易云、QQ、Spotify、汽水等平台不再提供账号登录；仍被公共搜索、歌词或备用音源依赖的匿名能力继续保留
-- 首页包含每日推荐、平台推荐、继续听、听歌画像和我的歌单入口
-- 完整桌面模式保留播放器、主页、歌单和桌面交互
-- 支持本地 MP4 与 Wallpaper Engine 视觉内容
-- 播放后切换到 Emily / 默认播放态视觉，歌词舞台与粒子舞台同步工作
-- 基于节奏的电影镜头视觉系统
-- 面向长播客和 DJ 曲目的专属视觉模式
-- 歌词舞台、自定义歌词、歌词位置与视觉控制
-- 自定义专辑封面上传与裁剪
-- 右键唤起 3D 歌单架，支持歌单队列浏览
-- 酷狗概念版账号资料、远程歌单、歌单歌曲、收藏与播放队列接入
-- 多平台匿名搜索、歌词和音源补充继续服务于公共播放链路
+### 在线音乐架构与账号
+
+- 将在线音乐架构收敛为酷狗概念版唯一在线音乐来源，删除网易云、QQ、汽水和 Spotify 的在线搜索、播放及自动换源链路
+- 保留本地音乐/MP3 导入和播客，使本地内容与长音频能力不受在线音源收敛影响
+- 修复酷狗概念版二维码登录、登录状态恢复、VIP 状态、账号资料、远程歌单和歌单歌曲获取
+- 参考酷狗概念版协议完善播放地址、会员权限和音质请求，登录令牌只由 Electron 主进程管理并使用 Windows 安全存储保护
+
+### 播放、音质与歌词
+
+- 为受限歌曲、无可用播放地址和切歌失败增加队列跳过与防卡死处理，不再循环请求已删除的平台
+- 改进无损音质请求、实际音质识别和降级提示，让请求音质与最终播放结果更透明
+- 接入酷狗原文歌词与译文，增加磁盘缓存和下一首歌词预取
+- 将原文和译文改为分阶段并行加载：原文先显示，译文随后合并
+- 普通酷狗在线播放会在开始前等待原文歌词，最长 800ms；缓存命中立即继续，译文不阻塞播放
+
+### 界面与发行工程
+
+- 调整首页模块比例和整体容器滚动，让滚轮控制完整主页而不是局部模块
+- 修复源码启动快捷方式、官方图标注入和 Windows 图标缓存问题
+- 建立 `super_mineradio_s.exe` Windows NSIS 构建、SHA-256 校验和 GitHub Release 流程
+- 增加发行内容脱敏审计，阻止登录状态、Cookie、令牌、缓存、本机用户名和绝对路径进入安装包
+
+## 当前核心能力
+
+- 酷狗概念版在线搜索、播放、账号登录、VIP 状态、远程歌单、收藏和播放队列
+- 本地音乐/MP3 导入与自定义专辑封面
+- 播客、长音频和 DJ 曲目专属视觉模式
+- 原文歌词、歌词译文、自定义歌词、歌词位置与视觉控制
+- 完整桌面模式、首页、播放器、队列和桌面交互
+- 粒子舞台、歌词舞台、基于节奏的电影镜头视觉系统和 3D 歌单架
+- 本地 MP4 与 Wallpaper Engine 视觉内容
 - GitHub Releases 更新检测与下载入口
-- 首次启动内置「默认测试」视觉用户存档，软件内默认视觉参数与该存档一致
 
-## 使用说明
+## 安装与运行
 
-Windows 用户可以在 GitHub Releases 中下载安装包。
+Windows 用户可从上面的 GitHub Release 下载并运行 `super_mineradio_s.exe`。安装器会创建 `Mineradio` 桌面快捷方式，内部应用身份保持不变，可继续兼容现有安装和用户数据目录。
 
-正式分发以 `Mineradio-2.0.1-Setup.exe` 为准，不建议直接使用 `win-unpacked` 目录。安装包会创建桌面快捷方式。
+校验安装包：
 
-已经安装过旧版本的用户可直接运行 `Mineradio-2.0.1-Setup.exe` 完成更新。
+```powershell
+(Get-FileHash .\super_mineradio_s.exe -Algorithm SHA256).Hash
+```
 
-## 开发运行
+`v1.0.0` 安装包 SHA-256：
+
+```text
+8176a813e579964271209e81c38bf49a103bbed5b8db2823a0e72e0da45dcbc4
+```
+
+开发运行：
 
 ```bash
 npm install
@@ -76,36 +83,30 @@ npm start
 npm run build:win
 ```
 
-桌面版入口由 Electron 主进程加载本地服务。`npm run build:win` 会生成 Windows NSIS 安装包，产物位于 `dist/`。
-
-## 更新机制
-
-Mineradio 会请求 GitHub Releases latest 检测新版本。远端版本高于本地版本时，应用内更新入口会展示 Release 内容、下载安装包到本机用户数据目录，并通过系统打开安装包。
-
-本地验证更新链路时，可以通过 `MINERADIO_UPDATE_MANIFEST` 指向一个本地 manifest JSON 或 HTTP 地址来模拟线上 Release。
+桌面版由 Electron 主进程加载本地服务，`npm run build:win` 生成 Windows NSIS 安装包。
 
 ## 第三方音乐平台说明
 
-Mineradio 不是酷狗音乐、腾讯音乐娱乐集团或其他音乐平台的官方客户端，也不隶属于任何音乐平台。酷狗概念版接入基于社区逆向接口研究，不是酷狗官方公开 API。
+Mineradio 不是酷狗音乐、腾讯音乐娱乐集团或其他音乐平台的官方客户端，也不隶属于任何音乐平台。酷狗概念版接入基于社区接口研究，不是酷狗官方公开 API。
 
 项目中的第三方平台接入仅用于个人学习、本地客户端体验和用户自有账号的播放辅助。请遵守对应平台的用户协议、版权规则和会员权益规则。项目不会提供绕过付费、绕过会员、破解音质或重新分发音乐内容的能力。
 
 ## 用户数据与隐私
 
-登录 Cookie、搜索历史、自定义封面、自定义歌词、节奏分析缓存等数据只应保存在本机用户数据目录或浏览器本地存储中，不应提交到仓库。
+登录状态、搜索历史、自定义封面、自定义歌词和节奏分析缓存等数据只应保存在本机用户数据目录中，不应提交到仓库或打包进发行版。发行构建会检查 Cookie、令牌、缓存、本机用户名和绝对路径等敏感内容。
 
 更多说明见 [PRIVACY.md](./PRIVACY.md)。
 
-## 致谢
+## 致谢与维护关系
 
-Mineradio 由 XxHuberrr 主要设计与打造。emily 作为早期视觉底层想法与 `emily` 视觉预设改进方向的共创者和灵感来源之一，特此感谢。
+Mineradio 原始项目由 XxHuberrr 主要设计与打造。emily 是早期视觉底层想法与 `emily` 视觉预设改进方向的共创者和灵感来源之一。
 
-同时感谢小天才e宝、应春日、锋将军、軌跡、林中、骊、风痕、花椰菜🥦在早期体验、测试反馈和发布准备中的帮助。
+当前仓库中的酷狗概念版专属架构、账号与歌单接入、播放和歌词稳定性、界面调整、Windows 快捷方式修复、脱敏构建及 GitHub 发行工作由 `Super` 持续改造和维护。
 
 ## 版权与授权
 
-Copyright (C) 2026 XxHuberrr.
+原项目版权信息：Copyright (C) 2026 XxHuberrr.
 
-本项目采用 GPL-3.0 授权。详见 [LICENSE](./LICENSE)。
+本仓库的新增修改由相应贡献者保留其版权，并继续采用 GPL-3.0 授权。详见 [LICENSE](./LICENSE)。
 
-MR Logo、Mineradio 名称、界面视觉设计与原创视觉表达归作者所有；第三方依赖和第三方服务分别遵循其各自授权与服务条款。
+MR Logo、Mineradio 名称、原始界面视觉设计与原创视觉表达归其原作者所有；第三方依赖和第三方服务分别遵循其各自授权与服务条款。
