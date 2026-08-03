@@ -94,6 +94,25 @@ async function run() {
     assert.strictEqual(lockedRestart.unlock(hiddenPhrase).unlocked, true, 'replayed gate should unlock again');
 
     const main = fs.readFileSync(path.join(__dirname, '..', 'desktop', 'main.js'), 'utf8');
+    assert(!main.includes('await initializeLoginEasterEggGate();'), 'the account UI must no longer depend on the legacy login gate');
+    ['netease', 'qq', 'qishui', 'spotify'].forEach((provider) => {
+      assert(!main.includes(`ipcMain.handle('${provider}-music-open-login'`), `${provider} authentication IPC must be removed`);
+    });
+    assert(main.includes("ipcMain.handle('kugou-lite-qr-start'"));
+    assert(main.includes("ipcMain.handle('kugou-lite-sms-login'"));
+    const currentPreload = fs.readFileSync(path.join(__dirname, '..', 'desktop', 'preload.js'), 'utf8');
+    assert(!currentPreload.includes('resetLoginEasterEgg'));
+    assert(currentPreload.includes('kugouLite: {'));
+    const currentLoader = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'index-loader.js'), 'utf8');
+    assert(!currentLoader.includes('00-login-easter-egg.js'));
+    assert(currentLoader.includes('03-kugou-lite-ui.js'));
+    const currentHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+    assert(!currentHtml.includes('id="login-easter-egg-gate"'));
+    assert(!currentHtml.includes('id="login-reset-all-btn"'));
+    assert(currentHtml.includes('登录酷狗概念版'));
+    console.log('[OK] Legacy login gate behavior remains testable but is no longer connected to the KuGou Lite account surface.');
+    return;
+
     assert(main.indexOf('migrateLegacyAuthStorage();') < main.indexOf('await initializeLoginEasterEggGate();'));
     assert(main.indexOf('await initializeLoginEasterEggGate();') < main.indexOf("localServer = require(serverModulePath)"));
     ['netease', 'qq', 'kugou', 'qishui', 'spotify'].forEach((provider) => {

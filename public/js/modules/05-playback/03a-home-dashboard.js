@@ -23,7 +23,7 @@ var HOME_PLATFORM_DAILY_OVERSCAN_ROWS = 3;
 var HOME_PLATFORM_DAILY_MAX_RENDERED_CARDS = 24;
 var homePlatformRecommendationState = {
   open: false,
-  source: 'netease',
+  source: 'kugou',
   previousFocus: null,
   neteaseLoading: false,
   feeds: {
@@ -853,7 +853,7 @@ function openHomeDashboardLibrary() {
 }
 
 function openHomeDashboardCharts() {
-  openHomePlatformRecommendations('netease');
+  openHomePlatformRecommendations('kugou');
 }
 
 function homePlatformRecommendationSourceLabel(source) {
@@ -867,6 +867,7 @@ function homePlatformRecommendationSourceLabel(source) {
 }
 
 function homePlatformRecommendationFeedConfig(source) {
+  if (source !== 'kugou') return null;
   return {
     qishui: {
       endpoint: '/api/qishui/feed?limit=12',
@@ -1148,7 +1149,7 @@ async function loadHomePlatformFeedRecommendations(source, force) {
 }
 
 async function loadHomePlatformRecommendations(source, force) {
-  homePlatformRecommendationState.source = source || 'netease';
+  homePlatformRecommendationState.source = 'kugou';
   renderHomePlatformRecommendations();
   try {
     if (homePlatformRecommendationState.source === 'netease') {
@@ -1163,6 +1164,7 @@ async function loadHomePlatformRecommendations(source, force) {
 }
 
 function playHomePlatformFeedSong(source, index) {
+  if (source !== 'kugou') return;
   var config = homePlatformRecommendationFeedConfig(source);
   var feedState = homePlatformRecommendationState.feeds[source];
   var songs = feedState && feedState.songs || [];
@@ -1241,14 +1243,7 @@ function openHomePlatformRecommendations(preferredSource) {
   homePlatformRecommendationState.open = true;
   mask.classList.add('show');
   mask.setAttribute('aria-hidden', 'false');
-  var defaultSource = loginStatus && loginStatus.loggedIn
-    ? 'netease'
-    : (qishuiLoginStatus && (qishuiLoginStatus.loggedIn || qishuiLoginStatus.configured)
-      ? 'qishui'
-      : (kugouLoginStatus && kugouLoginStatus.loggedIn
-        ? 'kugou'
-        : (spotifyLoginStatus && (spotifyLoginStatus.loggedIn || spotifyLoginStatus.configured) ? 'spotify' : 'netease')));
-  var source = /^(netease|qishui|qq|kugou|spotify)$/.test(String(preferredSource || '')) ? preferredSource : defaultSource;
+  var source = 'kugou';
   loadHomePlatformRecommendations(source, false);
   setTimeout(function () {
     var activeTab = mask.querySelector('[data-home-recommend-source="' + source + '"]');

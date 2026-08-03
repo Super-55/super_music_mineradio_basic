@@ -63,6 +63,7 @@ const tls = require('tls');
 const { once } = require('events');
 const { fileURLToPath } = require('url');
 const { analyzePodcastDjStream, analyzePodcastDjIntro } = require('./dj-analyzer');
+const { isRemovedOnlineMusicRoute, removedOnlineMusicResponse } = require('./online-music-policy');
 const { TrackDecryptor } = require('./qishui-audio-decryptor/track-decryptor');
 const {
   handleKugouSearch,
@@ -74,10 +75,10 @@ const {
   handleKugouLikeCheck,
   handleKugouLikeToggle,
   handleKugouPlaylistAddSong,
+  handleKugouVipClaimStatus,
+  handleKugouClaimDayVip,
   getKugouLoginInfo,
-  normalizeKugouCookieInput,
   kugouCookieHasPlayback,
-  extractKugouAuth,
   kugouAudioReferer,
 } = require('./kugou-api');
 const {
@@ -124,6 +125,7 @@ const {
   readCuefieldFeedbackStats,
 } = require('./cuefield/feedback-log');
 const { planCuefieldTransitionFromCache } = require('./cuefield/mineradio-bridge');
+const kugouAccountBridge = require('./kugou-account-bridge');
 
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -142,6 +144,24 @@ const LOGIN_EASTER_EGG_PROTECTED_ROUTES = new Set([
   '/api/qishui/login/token',
   '/api/qishui/login/cookie',
   '/api/spotify/config',
+]);
+const REMOVED_ACCOUNT_AUTH_ROUTES = new Set([
+  '/api/login/cookie',
+  '/api/login/qr/key',
+  '/api/login/qr/create',
+  '/api/login/qr/check',
+  '/api/login/status',
+  '/api/logout',
+  '/api/qq/login/cookie',
+  '/api/qq/login/status',
+  '/api/qq/logout',
+  '/api/kugou/login/cookie',
+  '/api/kugou/logout',
+  '/api/qishui/login/token',
+  '/api/qishui/login/cookie',
+  '/api/qishui/login/status',
+  '/api/qishui/logout',
+  '/api/spotify/logout',
 ]);
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 const DEFAULT_COOKIE_FILE = path.join(__dirname, '.cookie');
@@ -372,9 +392,6 @@ function saveQQCookie(c) {
 }
 
 let kugouCookie = '';
-function saveKugouCookie(c) {
-  kugouCookie = saveConfiguredCookieStore(configuredCookieStores.kugou, normalizeCookieHeader(c) || rawCookieFallback(c));
-}
 
 let qishuiCookie = '';
 function saveQishuiCookie(c) {
@@ -383,7 +400,8 @@ function saveQishuiCookie(c) {
 function refreshConfiguredCookieStores(force) {
   userCookie = refreshConfiguredCookieStore(configuredCookieStores.netease, force);
   qqCookie = refreshConfiguredCookieStore(configuredCookieStores.qq, force);
-  kugouCookie = refreshConfiguredCookieStore(configuredCookieStores.kugou, force);
+  kugouCookie = kugouAccountBridge.getCookie();
+  configuredCookieStores.kugou.value = kugouCookie;
   qishuiCookie = refreshConfiguredCookieStore(configuredCookieStores.qishui, force);
 }
 function refreshQQConfiguredCookieStore(force) {
@@ -391,11 +409,16 @@ function refreshQQConfiguredCookieStore(force) {
   return qqCookie;
 }
 refreshConfiguredCookieStores(true);
+kugouAccountBridge.onChange((_session, cookie) => {
+  kugouCookie = String(cookie || '');
+  configuredCookieStores.kugou.value = kugouCookie;
+});
 
 function clearAllRuntimeLoginCredentials(reason) {
   userCookie = '';
   qqCookie = '';
   kugouCookie = '';
+  kugouAccountBridge.clearSession();
   qishuiCookie = '';
   Object.keys(configuredCookieStores).forEach((key) => {
     configuredCookieStores[key].value = '';
@@ -2354,50 +2377,17 @@ function mapDailyRecommendationSongs(raw) {
 }
 
 async function handleDiscoverHome() {
-  const info = await getLoginInfo();
+  const info = await getKugouLoginInfo(kugouCookie);
   const loggedIn = !!(info && info.loggedIn);
-  if (!loggedIn) {
-    return {
-      loggedIn: false,
-      user: null,
-      dailySongs: [],
-      dailySongTotal: 0,
-      dailySongsComplete: true,
-      playlists: [],
-      podcasts: [],
-      mode: 'starter',
-      updatedAt: Date.now(),
-    };
-  }
-  const tasks = [
-    personalized({ limit: 8, cookie: userCookie, timestamp: Date.now() }),
-    recommend_resource({ cookie: userCookie, timestamp: Date.now() }),
-    recommend_songs({ cookie: userCookie, timestamp: Date.now() }),
-  ];
+  const tasks = [handleKugouGuessLike(kugouCookie, 18)];
+  if (loggedIn) tasks.push(handleKugouUserPlaylists(kugouCookie));
   const result = await Promise.allSettled(tasks);
-
-  const personalizedBody = result[0].status === 'fulfilled' && result[0].value && result[0].value.body || {};
-  const publicPlaylists = (personalizedBody.result || personalizedBody.data || [])
-    .map(pl => mapDiscoverPlaylist(pl, '推荐歌单'))
-    .filter(pl => pl.id && pl.name)
-    .slice(0, 8);
-
-  let privatePlaylists = [];
-  if (result[1].status === 'fulfilled' && result[1].value) {
-    const body = result[1].value.body || {};
-    const raw = body.recommend || body.data || [];
-    privatePlaylists = (Array.isArray(raw) ? raw : [])
-      .map(pl => mapDiscoverPlaylist(pl, '私人推荐'))
-      .filter(pl => pl.id && pl.name)
-      .slice(0, 6);
-  }
-
-  let dailySongs = [];
-  if (result[2].status === 'fulfilled' && result[2].value) {
-    const body = result[2].value.body || {};
-    const raw = body.data && (body.data.dailySongs || body.data.recommend) || body.recommend || [];
-    dailySongs = mapDailyRecommendationSongs(raw);
-  }
+  const recommendation = result[0].status === 'fulfilled' && result[0].value || {};
+  const playlistResult = result[1] && result[1].status === 'fulfilled' && result[1].value || {};
+  const recommendationSongs = recommendation.songs || recommendation.data || [];
+  const dailySongs = (Array.isArray(recommendationSongs) ? recommendationSongs : [])
+    .filter(song => song && (song.provider === 'kugou' || song.source === 'kugou' || song.hash || song.audioHash));
+  const playlists = Array.isArray(playlistResult.playlists) ? playlistResult.playlists.slice(0, 10) : [];
 
   return {
     loggedIn,
@@ -2405,8 +2395,9 @@ async function handleDiscoverHome() {
     dailySongs,
     dailySongTotal: dailySongs.length,
     dailySongsComplete: true,
-    playlists: privatePlaylists.concat(publicPlaylists).slice(0, 10),
+    playlists,
     podcasts: [],
+    mode: loggedIn ? 'member' : 'starter',
     updatedAt: Date.now(),
   };
 }
@@ -5307,6 +5298,20 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost:' + PORT);
   const pn = url.pathname;
 
+  if (isRemovedOnlineMusicRoute(pn)) {
+    sendJSON(res, removedOnlineMusicResponse(), 410);
+    return;
+  }
+
+  if (REMOVED_ACCOUNT_AUTH_ROUTES.has(pn)) {
+    sendJSON(res, {
+      ok: false,
+      error: 'ACCOUNT_PROVIDER_REMOVED',
+      message: 'Mineradio 仅保留酷狗概念版账户登录；该平台只提供播放器所需的匿名能力。',
+    }, 410);
+    return;
+  }
+
   if (LOGIN_EASTER_EGG_PROTECTED_ROUTES.has(pn) && !loginEasterEggGateUnlocked()) {
     sendJSON(res, {
       ok: false,
@@ -6222,29 +6227,51 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (pn === '/api/kugou/login/cookie') {
+  if (pn === '/api/kugou/vip/claim/status') {
+    if (req.method !== 'GET') {
+      sendJSON(res, { provider: 'kugou', ok: false, error: 'METHOD_NOT_ALLOWED' }, 405);
+      return;
+    }
     try {
-      const body = await readRequestBody(req);
-      const raw = body.cookie || body.data || body.text || '';
-      const normalized = normalizeKugouCookieInput(raw);
-      const auth = extractKugouAuth(normalized);
-      if (!auth.loggedIn && !parseCookieString(normalized).kg_mid) {
-        sendJSON(res, { provider: 'kugou', loggedIn: false, error: 'INVALID_KUGOU_COOKIE', message: '酷狗 cookie 无效或缺少登录标识' }, 400);
-        return;
-      }
-      saveKugouCookie(normalized);
-      const info = await getKugouLoginInfo(kugouCookie);
-      sendJSON(res, { ...info, saved: true, partial: auth.loggedIn && !auth.playbackReady });
+      sendJSON(res, await handleKugouVipClaimStatus(kugouCookie));
     } catch (err) {
-      console.error('[KugouLoginCookie]', err);
-      sendJSON(res, { provider: 'kugou', loggedIn: false, error: err.message }, 500);
+      console.error('[KugouVipClaimStatus]', err);
+      sendJSON(res, { provider: 'kugou', ok: false, error: err.message }, 500);
     }
     return;
   }
 
+  if (pn === '/api/kugou/vip/claim-day') {
+    if (req.method !== 'POST') {
+      sendJSON(res, { provider: 'kugou', ok: false, error: 'METHOD_NOT_ALLOWED' }, 405);
+      return;
+    }
+    try {
+      const result = await handleKugouClaimDayVip(kugouCookie, url.searchParams.get('date') || '');
+      sendJSON(res, result, result.ok ? 200 : (result.error === 'KUGOU_AUTH_REQUIRED' ? 401 : 400));
+    } catch (err) {
+      console.error('[KugouVipClaimDay]', err);
+      sendJSON(res, { provider: 'kugou', ok: false, error: err.message, message: err.message }, 500);
+    }
+    return;
+  }
+
+  if (pn === '/api/kugou/login/cookie') {
+    sendJSON(res, {
+      provider: 'kugou',
+      loggedIn: false,
+      error: 'KUGOU_COOKIE_LOGIN_REMOVED',
+      message: '请使用桌面端的酷狗概念版扫码或短信登录。',
+    }, 410);
+    return;
+  }
+
   if (pn === '/api/kugou/logout') {
-    saveKugouCookie('');
-    sendJSON(res, { provider: 'kugou', loggedIn: false, ok: true });
+    sendJSON(res, {
+      provider: 'kugou',
+      loggedIn: kugouCookieHasPlayback(kugouCookie),
+      error: 'KUGOU_LOGOUT_REQUIRES_DESKTOP_IPC',
+    }, 405);
     return;
   }
 
@@ -6577,6 +6604,20 @@ const server = http.createServer(async (req, res) => {
     } catch (err) {
       console.error('[MyPodcastItems]', err);
       sendJSON(res, { error: err.message, items: [] }, 500);
+    }
+    return;
+  }
+
+  if (pn === '/api/podcast/song/url') {
+    try {
+      const sid = url.searchParams.get('id');
+      if (!sid) { sendJSON(res, { provider: 'podcast', error: 'Missing podcast song id', url: '' }, 400); return; }
+      const loginInfo = await getPlaybackLoginInfo();
+      const info = await handleSongUrl(sid, loginInfo, 'standard', {});
+      sendJSON(res, { ...info, provider: 'podcast', source: 'podcast' });
+    } catch (err) {
+      console.error('[PodcastSongUrl]', err);
+      sendJSON(res, { provider: 'podcast', url: '', error: err.message }, 500);
     }
     return;
   }

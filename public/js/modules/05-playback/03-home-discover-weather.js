@@ -171,7 +171,7 @@ async function loadHomeDiscover(force) {
     if (token !== homeDiscoverToken) return;
     homeDiscoverState.loggedIn = !!(data && data.loggedIn) || hasAnyPlatformLogin();
     homeDiscoverState.mode = data && data.mode || (homeDiscoverState.loggedIn ? 'member' : 'starter');
-    homeDiscoverState.songs = homeDiscoverState.loggedIn ? (data && data.dailySongs || []).map(cloneSong) : [];
+    homeDiscoverState.songs = filterMineradioQueueItems((data && data.dailySongs || []).map(cloneSong));
     homeDiscoverState.playlists = homeDiscoverState.loggedIn ? ((data && data.playlists && data.playlists.length) ? data.playlists : userPlaylists.slice(0, 10)) : [];
     homeDiscoverState.podcasts = homeDiscoverState.loggedIn ? (data && data.podcasts || []) : [];
     homeDiscoverState.updatedAt = Number(data && data.updatedAt) || Date.now();

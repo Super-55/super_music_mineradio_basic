@@ -76,6 +76,17 @@ function restoreLastPlaybackSnapshot() {
   var snapshot = readLastPlaybackSnapshot();
   if (!snapshot || !snapshot.current) return false;
   var current = hydrateCustomCover(Object.assign({}, snapshot.current));
+  var restoredQueue = filterMineradioQueueItems(
+    Array.isArray(snapshot.queue)
+      ? snapshot.queue.map(function (song) { return hydrateCustomCover(Object.assign({}, song)); })
+      : []
+  );
+  if (!isMineradioAllowedQueueItem(current)) {
+    if (!restoredQueue.length) return false;
+    current = restoredQueue[0];
+    snapshot.current = playbackRestoreSongSnapshot(current);
+    snapshot.currentIdx = 0;
+  }
   var isLocal = current.type === 'local' || !!current.localKey || current.localMissing;
   restoredLastPlaybackSnapshot = snapshot;
   startupRestoreHomePending = !startupAutoplayPreference;
@@ -85,7 +96,7 @@ function restoreLastPlaybackSnapshot() {
     currentIdx = -1;
     playQueue = [];
   } else {
-    var queue = Array.isArray(snapshot.queue) ? snapshot.queue.map(function (song) { return hydrateCustomCover(Object.assign({}, song)); }).filter(function (song) { return song && (song.id || song.mid || song.name); }) : [];
+    var queue = restoredQueue.filter(function (song) { return song && (song.id || song.mid || song.hash || song.name); });
     if (!queue.length) queue = [current];
     var idx = Math.max(0, Math.min(queue.length - 1, Number(snapshot.currentIdx) || 0));
     if (!queue[idx] || queueItemKey(queue[idx]) !== queueItemKey(current)) {

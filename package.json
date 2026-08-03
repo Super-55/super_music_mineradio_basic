@@ -8,6 +8,7 @@
   "main": "desktop/main.js",
   "private": true,
   "scripts": {
+    "test": "node tests/kugou-lite-account.test.js && node tests/kugou-lite-playlist-protocol.test.js && node tests/kugou-single-account-ui.test.js && node tests/kugou-playback-resilience.test.js && node --test tests/kugou-lyric-translation.test.js tests/kugou-lyrics-renderer-policy.test.js tests/kugou-only-source-policy.test.js tests/kugou-only-playback-policy.test.js tests/online-music-route-policy.test.js",
     "start": "electron .",
     "build:win": "electron-builder --win nsis --publish never",
     "build:win:dir": "electron-builder --win dir",
@@ -31,6 +32,7 @@
       "cuefield/**/*",
       "server.js",
       "*-api.js",
+      "kugou-account-bridge.js",
       "qishui-audio-decryptor/**/*",
       "dj-analyzer.js",
       "LICENSE",
@@ -74,16 +76,16 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "XxHuberrr",
-        "repo": "Mineradio"
+        "owner": "Super-55",
+        "repo": "super_music_mineradio_basic"
       }
     ]
   },
   "mineradio": {
     "update": {
       "provider": "github",
-      "owner": "XxHuberrr",
-      "repo": "Mineradio",
+      "owner": "Super-55",
+      "repo": "super_music_mineradio_basic",
       "preview": true,
       "preferMirrors": true,
       "mirrors": [
@@ -96,7 +98,8 @@
   "dependencies": {
     "gsap": "^3.15.0",
     "mpg123-decoder": "^1.0.3",
-    "NeteaseCloudMusicApi": "^4.32.0"
+    "NeteaseCloudMusicApi": "^4.32.0",
+    "qrcode": "^1.5.4"
   },
   "overrides": {
     "axios": "1.18.1",

@@ -1602,28 +1602,33 @@ async function checkSpotifyProviderGuard() {
   if (!/\/api\/spotify\/logout/.test(serverText) || !/\/api\/spotify\/user\/playlists/.test(serverText) || !/\/api\/spotify\/playlist\/tracks/.test(serverText)) {
     fail('server.js must route Spotify logout, user playlists, and playlist track detail endpoints');
   }
-  if (!/SPOTIFY_LOGIN_PARTITION/.test(desktopMainText) || !/openSpotifyMusicLoginWindow/.test(desktopMainText) || !/spotify-music-open-login/.test(desktopMainText) || !/SPOTIFY_TOKEN_FILE/.test(desktopMainText) || !/127\.0\.0\.1:43879\/callback/.test(spotifyText + desktopMainText)) {
-    fail('desktop main must provide a local Spotify OAuth callback/login bridge and userData token storage');
-  }
-  if (!/openSpotifyMusicLogin/.test(desktopPreloadText) || !/clearSpotifyMusicLogin/.test(desktopPreloadText)) {
-    fail('desktop preload must expose Spotify login and clear-login IPC bridges');
-  }
-  if (!/login-provider-spotify/.test(indexText) || !/user-provider-spotify/.test(indexText) || !/account-add-spotify/.test(indexText) || !/account-source-dot\.spotify/.test(cssText) || !/account-provider-chip\.spotify/.test(cssText)) {
-    fail('Spotify login and account tabs must be visible in the UI');
-  }
-  if (!/spotifyLoginStatus/.test(coreStoreText) || !/spotifyPlaylists/.test(coreStoreText) || !/refreshSpotifyLoginStatus/.test(loginStatusText) || !/openSpotifyWebLogin/.test(loginFlowText) || !/clearSpotifyMusicLogin/.test(userModalText)) {
-    fail('frontend account state must include Spotify status, OAuth flow, playlists, and logout');
+  const kugouOnlyAccountUi = /kugouLite:\s*\{/.test(desktopPreloadText)
+    && !/spotify-music-open-login/.test(desktopMainText)
+    && !/login-provider-spotify/.test(indexText);
+  if (!kugouOnlyAccountUi) {
+    if (!/SPOTIFY_LOGIN_PARTITION/.test(desktopMainText) || !/openSpotifyMusicLoginWindow/.test(desktopMainText) || !/spotify-music-open-login/.test(desktopMainText) || !/SPOTIFY_TOKEN_FILE/.test(desktopMainText) || !/127\.0\.0\.1:43879\/callback/.test(spotifyText + desktopMainText)) {
+      fail('desktop main must provide a local Spotify OAuth callback/login bridge and userData token storage');
+    }
+    if (!/openSpotifyMusicLogin/.test(desktopPreloadText) || !/clearSpotifyMusicLogin/.test(desktopPreloadText)) {
+      fail('desktop preload must expose Spotify login and clear-login IPC bridges');
+    }
+    if (!/login-provider-spotify/.test(indexText) || !/user-provider-spotify/.test(indexText) || !/account-add-spotify/.test(indexText) || !/account-source-dot\.spotify/.test(cssText) || !/account-provider-chip\.spotify/.test(cssText)) {
+      fail('Spotify login and account tabs must be visible in the UI');
+    }
+    if (!/spotifyLoginStatus/.test(coreStoreText) || !/spotifyPlaylists/.test(coreStoreText) || !/refreshSpotifyLoginStatus/.test(loginStatusText) || !/openSpotifyWebLogin/.test(loginFlowText) || !/clearSpotifyMusicLogin/.test(userModalText)) {
+      fail('frontend account state must include Spotify status, OAuth flow, playlists, and logout');
+    }
   }
   if (!/tokenFileExists/.test(spotifyText) || !/credentialsFileExists/.test(spotifyText) || !/localConfigMissing/.test(spotifyText) || !/fs\.existsSync/.test(spotifyText)) {
     fail('Spotify status must distinguish configured paths from real local token/credential files');
   }
-  if (!/localConfigMissing/.test(loginStatusText) || !/tokenFileExists/.test(loginStatusText) || !/credentialsFileExists/.test(loginStatusText) || !/submitSpotifyConfigLogin/.test(loginFlowText) || !/\/api\/spotify\/config/.test(loginFlowText) || !/粘贴 Spotify Client ID/.test(loginFlowText) || !/保存并授权/.test(loginFlowText)) {
+  if (!kugouOnlyAccountUi && (!/localConfigMissing/.test(loginStatusText) || !/tokenFileExists/.test(loginStatusText) || !/credentialsFileExists/.test(loginStatusText) || !/submitSpotifyConfigLogin/.test(loginFlowText) || !/\/api\/spotify\/config/.test(loginFlowText) || !/粘贴 Spotify Client ID/.test(loginFlowText) || !/保存并授权/.test(loginFlowText))) {
     fail('Spotify frontend status must surface missing local OAuth config/token and provide simple Client ID save + OAuth flow');
   }
-  if (!/SPOTIFY_DEVELOPER_DASHBOARD_URL/.test(loginFlowText) || !/openSpotifyDeveloperDashboard/.test(loginFlowText) || !/copySpotifyRedirectUri/.test(loginFlowText) || !/Spotify 玩家接入三步/.test(loginFlowText) || !/不用填 Client Secret/.test(loginFlowText) || !/spotify-guide-panel/.test(cssText)) {
+  if (!kugouOnlyAccountUi && (!/SPOTIFY_DEVELOPER_DASHBOARD_URL/.test(loginFlowText) || !/openSpotifyDeveloperDashboard/.test(loginFlowText) || !/copySpotifyRedirectUri/.test(loginFlowText) || !/Spotify 玩家接入三步/.test(loginFlowText) || !/不用填 Client Secret/.test(loginFlowText) || !/spotify-guide-panel/.test(cssText))) {
     fail('Spotify player onboarding must stay as a short three-step guide with dashboard and redirect-copy actions');
   }
-  if (!/loginRefreshRequestSeq/.test(loginFlowText) || !/isLoginRefreshCurrent/.test(loginFlowText)) {
+  if (!kugouOnlyAccountUi && (!/loginRefreshRequestSeq/.test(loginFlowText) || !/isLoginRefreshCurrent/.test(loginFlowText))) {
     fail('login modal provider switching must guard stale async status and QR writes');
   }
   if (!/\/api\/spotify\/user\/playlists/.test(playlistShellText) || !/spotifyPlaylists/.test(playlistShellText) || !/\/api\/spotify\/playlist\/tracks/.test(playlistDetailText) || !/spotify:' \+ id/.test(playlistDetailText) || !/Spotify 歌单/.test(playlistDetailText)) {
@@ -5217,8 +5222,14 @@ async function main() {
   await checkProviderFallbackTerminalStateGuard();
   checkSearchGlassEntranceGuard();
   checkProviderEntitlementBoundaryGuard();
-  checkQQVipStatusSyncGuard();
-  await checkProviderAuthCookiePathGuard();
+  const accountLoaderText = fs.readFileSync(path.join(appRoot, 'public', 'js', 'index-loader.js'), 'utf8');
+  const kugouLiteOnlyAccountMode = /03-kugou-lite-ui\.js/.test(accountLoaderText)
+    && !/02-login-status\.js/.test(accountLoaderText)
+    && !/03-login-modal-flows\.js/.test(accountLoaderText);
+  if (!kugouLiteOnlyAccountMode) {
+    checkQQVipStatusSyncGuard();
+    await checkProviderAuthCookiePathGuard();
+  }
   checkPlaybackResumeRecoveryGuard();
   checkAudioOutputWorkflowPanelGuard();
   checkVolumeWheelStepGuard();

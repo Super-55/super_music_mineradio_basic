@@ -3,8 +3,6 @@ function hasUsableLyricLines(lines) {
     return line && !line.fallback && !isNoLyricText(line.text);
   });
 }
-var lyricTranslationFallbackCache = {};
-var lyricTranslationFallbackMissCache = {};
 var lyricQueuePrefetchTimer = 0;
 var lyricQueuePrefetchToken = 0;
 var lyricQueuePrefetchBusy = false;
@@ -41,7 +39,7 @@ function persistentLyricCacheKey(song) {
   var provider = typeof songProviderKey === 'function' ? songProviderKey(song) : (song.source || song.provider || 'netease');
   var id = song.id || song.mid || song.songmid || song.hash || '';
   var artist = song.artist || song.singer || song.artists || '';
-  return ['lyrics-v1', provider, id, song.name || song.title || '', artist].join('|');
+  return ['lyrics-v2-kugou-only', provider, id, song.name || song.title || '', artist].join('|');
 }
 
 function readPersistentLyricCache(song) {
@@ -123,7 +121,6 @@ function applyFetchedLyricResponse(song, token, response, options) {
   var state = parseLyricResponseToOriginalState(song, mergedResponse);
   setOriginalLyricsState(state.lines, state.hasNativeKaraoke, state.timingSource, state.translationLines, state.translationSource);
   applyPreferredLyricsForCurrent(true);
-  scheduleNeteaseLyricTranslationFallback(song, token, state);
   if (state.usableLyric && options.persist !== false) writePersistentLyricCache(song, mergedResponse);
   return state;
 }
@@ -144,116 +141,6 @@ function mergeInlineLyricResponseForSong(song, response) {
   if (!response.yrc && (song.yrc || song.qrc)) response.yrc = song.yrc || song.qrc;
   if (!response.ytlrc && song.ytlrc) response.ytlrc = song.ytlrc;
   return response;
-}
-function lyricTranslationFallbackKey(song) {
-  song = song || {};
-  return [
-    simpleSearchNorm(song.name || song.title || ''),
-    simpleSearchNorm(song.artist || ''),
-    simpleSearchNorm(song.album || '')
-  ].join('|');
-}
-function shouldFetchNeteaseLyricTranslationFallback(song, state) {
-  if (!song || !state || !state.usableLyric) return false;
-  if (song.type === 'local' || song.source === 'local' || song.localUrl || song.type === 'podcast') return false;
-  if (songProviderKey(song) === 'netease') return false;
-  if (state.translationLines && state.translationLines.length) return false;
-  if (!String(song.name || song.title || '').trim()) return false;
-  var key = lyricTranslationFallbackKey(song);
-  var missedAt = lyricTranslationFallbackMissCache[key] || 0;
-  return !missedAt || Date.now() - missedAt > 10 * 60 * 1000;
-}
-function lyricNeteaseFallbackSearchQuery(song) {
-  song = song || {};
-  var artist = String(song.artist || '').split(/\s*\/\s*|\s*,\s*|\s*&\s*/)[0] || '';
-  return [song.name || song.title || '', artist].filter(Boolean).join(' ').trim();
-}
-async function findNeteaseLyricFallbackCandidate(song) {
-  var query = lyricNeteaseFallbackSearchQuery(song);
-  if (!query) return null;
-  var data = await apiJson('/api/search?keywords=' + encodeURIComponent(query) + '&limit=8', { timeoutMs: 4800 });
-  var list = data && (data.songs || data.result || []);
-  if (!Array.isArray(list) || !list.length) return null;
-  list = list.filter(function (candidate) {
-    return !(typeof sourceCandidateRejectReason === 'function' && sourceCandidateRejectReason(song, candidate, 'netease'));
-  });
-  if (!list.length) return null;
-  for (var i = 0; i < list.length; i++) {
-    if (typeof isSameTitleArtist === 'function' && isSameTitleArtist(song, list[i])) return list[i];
-  }
-  list = list.slice().sort(function (a, b) {
-    var sa = typeof scoreSongSearchResult === 'function' ? scoreSongSearchResult(a, query, 0) : 0;
-    var sb = typeof scoreSongSearchResult === 'function' ? scoreSongSearchResult(b, query, 0) : 0;
-    if (a && a.playable === false) sa -= 20;
-    if (b && b.playable === false) sb -= 20;
-    return sb - sa;
-  });
-  var best = list[0];
-  var bestScore = typeof scoreSongSearchResult === 'function' ? scoreSongSearchResult(best, query, 0) : 0;
-  return best && best.id && bestScore >= 28 ? best : null;
-}
-function mergeNeteaseFallbackTranslationsIntoCurrent(song, token, payload, cacheKey) {
-  if (!payload || !payload.lines || !payload.lines.length) return false;
-  if (token !== trackSwitchToken) return false;
-  var currentSong = typeof currentLyricSong === 'function' ? currentLyricSong() : null;
-  if (lyricTranslationFallbackKey(currentSong) !== cacheKey) return false;
-  if (originalLyricsState && originalLyricsState.translationLines && originalLyricsState.translationLines.length) return false;
-  var mergedLines = attachLyricTranslations(originalLyricsState.lines || [], payload.lines);
-  var attached = mergedLines.some(function (line) { return line && line.translation; });
-  if (!attached) return false;
-  setOriginalLyricsState(
-    mergedLines,
-    originalLyricsState.hasNativeKaraoke,
-    originalLyricsState.timingSource,
-    payload.lines,
-    'netease-fallback+' + (payload.source || 'tlyric')
-  );
-  applyPreferredLyricsForCurrent(true);
-  return true;
-}
-async function fetchNeteaseLyricTranslationFallback(song, token, cacheKey) {
-  if (!song || token !== trackSwitchToken) return false;
-  var cached = lyricTranslationFallbackCache[cacheKey];
-  if (cached) return mergeNeteaseFallbackTranslationsIntoCurrent(song, token, cached, cacheKey);
-  try {
-    var candidate = await findNeteaseLyricFallbackCandidate(song);
-    if (token !== trackSwitchToken || !candidate || !candidate.id) return false;
-    var response = await apiJson('/api/lyric?id=' + encodeURIComponent(candidate.id), { timeoutMs: 5200 });
-    if (token !== trackSwitchToken) return false;
-    var translationPayload = buildLyricTranslationPayload(response || {});
-    if (!translationPayload.lines.length) {
-      lyricTranslationFallbackMissCache[cacheKey] = Date.now();
-      return false;
-    }
-    cached = {
-      lines: cloneLyricLines(translationPayload.lines),
-      source: translationPayload.source,
-      candidateId: candidate.id,
-      cachedAt: Date.now()
-    };
-    lyricTranslationFallbackCache[cacheKey] = cached;
-    return mergeNeteaseFallbackTranslationsIntoCurrent(song, token, cached, cacheKey);
-  } catch (err) {
-    lyricTranslationFallbackMissCache[cacheKey] = Date.now();
-    console.warn('[LyricTranslationFallback]', err);
-    return false;
-  }
-}
-function scheduleNeteaseLyricTranslationFallback(song, token, state) {
-  if (!shouldFetchNeteaseLyricTranslationFallback(song, state)) return;
-  var cacheKey = lyricTranslationFallbackKey(song);
-  var cached = lyricTranslationFallbackCache[cacheKey];
-  if (cached) {
-    setTimeout(function () { mergeNeteaseFallbackTranslationsIntoCurrent(song, token, cached, cacheKey); }, 0);
-    return;
-  }
-  var start = function () {
-    if (token === trackSwitchToken) fetchNeteaseLyricTranslationFallback(song, token, cacheKey);
-  };
-  setTimeout(function () {
-    if (window.requestIdleCallback) requestIdleCallback(start, { timeout: 1800 });
-    else start();
-  }, 420);
 }
 function lyricFallbackTextForSong(song) {
   song = song || {};

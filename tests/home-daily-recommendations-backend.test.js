@@ -60,11 +60,15 @@ test('daily recommendation mapper preserves every valid upstream song in order',
   );
 });
 
-test('discover home returns the complete mapped daily list without a fixed song cap', () => {
+test('discover home returns the complete KuGou recommendation list without a fixed song cap', () => {
   const discoverSource = namedFunctionSource(source, 'handleDiscoverHome');
   assert.ok(discoverSource, 'expected handleDiscoverHome()');
-  assert.match(discoverSource, /dailySongs\s*=\s*mapDailyRecommendationSongs\(raw\)/);
-  assert.doesNotMatch(discoverSource, /dailySongs[\s\S]{0,300}\.slice\s*\(\s*0\s*,\s*(?:8|12)\s*\)/);
+  assert.match(discoverSource, /getKugouLoginInfo\(kugouCookie\)/);
+  assert.match(discoverSource, /handleKugouGuessLike\(kugouCookie/);
+  assert.doesNotMatch(discoverSource, /\b(?:personalized|recommend_resource|recommend_songs)\s*\(/);
+  const dailyAssignment = /const dailySongs\s*=\s*[\s\S]*?;\s*\n/.exec(discoverSource);
+  assert.ok(dailyAssignment, 'expected dailySongs assignment');
+  assert.doesNotMatch(dailyAssignment[0], /\.slice\s*\(/);
   assert.match(discoverSource, /dailySongTotal:\s*dailySongs\.length/);
   assert.match(discoverSource, /dailySongsComplete:\s*true/);
 });

@@ -77,14 +77,14 @@ function onUserBtnClick() {
   }
   showLoginModal({ provider: hasAnyPlatformLogin() ? firstLoggedProvider() : loginProvider, source: 'top-account' });
 }
-var ACCOUNT_PROVIDER_KEYS = ['netease', 'qq', 'kugou', 'qishui', 'spotify'];
+var ACCOUNT_PROVIDER_KEYS = ['kugou'];
 var ACCOUNT_PROVIDER_ORDER_STORE_KEY = 'mineradio-account-provider-order-v1';
 var ACCOUNT_PROVIDER_VISIBLE_STORE_KEY = 'mineradio-account-provider-visible-v1';
 var topAccountPillDrag = null;
 var topAccountPillClickSuppressed = false;
 
 function normalizeAccountProviderKey(provider) {
-  return provider === 'qq' ? 'qq' : (provider === 'kugou' ? 'kugou' : (provider === 'qishui' ? 'qishui' : (provider === 'spotify' ? 'spotify' : 'netease')));
+  return 'kugou';
 }
 function normalizeAccountProviderList(list) {
   var seen = {};
@@ -225,10 +225,7 @@ function platformMeta(provider) {
   return { key: 'netease', short: 'NE', label: '网易云音乐', app: '网易云音乐 App', dot: 'netease' };
 }
 function platformStatus(provider) {
-  if (provider === 'spotify') return spotifyLoginStatus;
-  if (provider === 'qishui') return qishuiLoginStatus;
-  if (provider === 'kugou') return kugouLoginStatus;
-  return provider === 'qq' ? qqLoginStatus : loginStatus;
+  return normalizePlaybackProvider(provider) === 'kugou' ? kugouLoginStatus : null;
 }
 function providerVipType(provider, status) {
   status = status || platformStatus(provider) || {};
@@ -280,7 +277,7 @@ function hasPlatformLogin(provider) {
   return !!(st && st.loggedIn);
 }
 function hasAnyPlatformLogin() {
-  return hasPlatformLogin('netease') || hasPlatformLogin('qq') || hasPlatformLogin('kugou') || hasPlatformLogin('qishui') || hasPlatformLogin('spotify');
+  return hasPlatformLogin('kugou');
 }
 function firstLoggedProvider() {
   if (hasPlatformLogin(activeAccountProvider)) return activeAccountProvider;
@@ -288,7 +285,7 @@ function firstLoggedProvider() {
   for (var i = 0; i < ordered.length; i += 1) {
     if (hasPlatformLogin(ordered[i])) return ordered[i];
   }
-  return 'netease';
+  return 'kugou';
 }
 function providerAvatarSrc(provider, status) {
   status = status || platformStatus(provider) || {};

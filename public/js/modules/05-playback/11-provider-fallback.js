@@ -200,7 +200,12 @@ function ensureSourceFallbackStack() {
   return stack;
 }
 function removeSourceFallbackCard(card) {
-  if (!card) return;
+  if (!card || card.__mineradioRemoving) return;
+  card.__mineradioRemoving = true;
+  if (card.__mineradioNoticeTimer) {
+    clearTimeout(card.__mineradioNoticeTimer);
+    card.__mineradioNoticeTimer = null;
+  }
   card.classList.add('leaving');
   setTimeout(function () {
     if (card.parentNode) card.parentNode.removeChild(card);
@@ -209,13 +214,37 @@ function removeSourceFallbackCard(card) {
 function showSourceFallbackNotice(title, body) {
   var stack = ensureSourceFallbackStack();
   if (stack) {
+    var noticeTitle = title || '自动换源';
+    var noticeBody = body || '';
+    var noticeKey = noticeTitle === '已跳过受限歌曲'
+      ? noticeTitle
+      : noticeTitle + '\n' + noticeBody;
+    var existingCards = Array.prototype.slice.call(stack.children || []);
+    var existingCard = existingCards.find(function (item) {
+      return item && item.__mineradioNoticeKey === noticeKey && !item.__mineradioRemoving;
+    });
+    if (existingCard) {
+      existingCard.__mineradioNoticeCount = Number(existingCard.__mineradioNoticeCount || 1) + 1;
+      var existingBody = existingCard.querySelector('.source-fallback-body');
+      if (existingBody) {
+        existingBody.textContent = noticeTitle === '已跳过受限歌曲'
+          ? noticeBody + '（本次连续 ' + existingCard.__mineradioNoticeCount + ' 首）'
+          : noticeBody;
+      }
+      if (existingCard.__mineradioNoticeTimer) clearTimeout(existingCard.__mineradioNoticeTimer);
+      stack.insertBefore(existingCard, stack.firstChild || null);
+      existingCard.__mineradioNoticeTimer = setTimeout(function () { removeSourceFallbackCard(existingCard); }, 5600);
+      return;
+    }
     var card = document.createElement('div');
     card.className = 'source-fallback-card';
+    card.__mineradioNoticeKey = noticeKey;
+    card.__mineradioNoticeCount = 1;
     var head = document.createElement('div');
     head.className = 'source-fallback-head';
     var titleElNew = document.createElement('div');
     titleElNew.className = 'source-fallback-title';
-    titleElNew.textContent = title || '自动换源';
+    titleElNew.textContent = noticeTitle;
     var close = document.createElement('button');
     close.className = 'source-fallback-close';
     close.type = 'button';
@@ -223,7 +252,7 @@ function showSourceFallbackNotice(title, body) {
     close.onclick = function () { removeSourceFallbackCard(card); };
     var bodyElNew = document.createElement('div');
     bodyElNew.className = 'source-fallback-body';
-    bodyElNew.textContent = body || '';
+    bodyElNew.textContent = noticeBody;
     head.appendChild(titleElNew);
     head.appendChild(close);
     card.appendChild(head);
@@ -231,7 +260,7 @@ function showSourceFallbackNotice(title, body) {
     stack.insertBefore(card, stack.firstChild || null);
     while (stack.children.length > 4) removeSourceFallbackCard(stack.lastElementChild);
     requestAnimationFrame(function () { card.classList.add('show'); });
-    setTimeout(function () { removeSourceFallbackCard(card); }, 5600);
+    card.__mineradioNoticeTimer = setTimeout(function () { removeSourceFallbackCard(card); }, 5600);
     return;
   }
   var notice = document.getElementById('source-fallback-notice');
@@ -304,16 +333,14 @@ function alternatePlaybackProvider(song) {
   return alternatePlaybackProviders(song)[0] || '';
 }
 async function searchAlternatePlatformSong(song, requestedTarget) {
+  return null;
+  /* Legacy implementation retained below for queue snapshot compatibility only. */
   var target = requestedTarget || alternatePlaybackProvider(song);
   if (!target || !sourceFallbackProviderReady(target)) return null;
   var artist = artistNameParts(song)[0] || '';
   var query = [song.name || song.title || '', song.artist || artist].filter(Boolean).join(' ').trim();
   if (!query) return null;
-  var url = target === 'qq'
-    ? '/api/qq/search?keywords=' + encodeURIComponent(query) + '&limit=8'
-    : (target === 'kugou'
-      ? '/api/kugou/search?keywords=' + encodeURIComponent(query) + '&limit=8'
-      : '/api/search?keywords=' + encodeURIComponent(query) + '&limit=12');
+  var url = mineradioMusicSearchUrl(query, 8, 0);
   var data = await apiJson(url, { timeoutMs: SOURCE_FALLBACK_SEARCH_TIMEOUT_MS });
   var list = data && (data.songs || data.result || []);
   for (var i = 0; i < list.length; i++) {
@@ -369,6 +396,7 @@ function markQueueItemPlaybackFailed(idx) {
   if (playQueue[idx]) playQueue[idx]._lastPlaybackFailAt = Date.now();
 }
 var MAX_RECENT_AUTO_QUEUE_FAILURES = 12;
+var MAX_AUTO_SKIP_CHAIN = 3;
 function recentQueuePlaybackFailureCount() {
   var now = Date.now();
   var count = 0;
@@ -399,8 +427,18 @@ async function skipFailedQueueItem(idx, token, message, opts) {
   hideLoading();
   if (token !== trackSwitchToken) return false;
   markQueueItemPlaybackFailed(idx);
+  var playbackOpts = Object.assign({}, opts.playbackOpts || {});
+  var failedInThisAction = Math.max(0, Number(playbackOpts.autoSkipCount) || 0) + 1;
   if (playQueue.length <= 1) {
     return settleSourceFallbackTerminal(idx, token, message || '当前歌曲不可播放，队列里没有其他歌曲。', opts);
+  }
+  if (failedInThisAction >= MAX_AUTO_SKIP_CHAIN) {
+    return settleSourceFallbackTerminal(
+      idx,
+      token,
+      '已连续检查 ' + failedInThisAction + ' 首歌曲，后续自动跳过已暂停。你可以手动选择其它歌曲继续播放。',
+      opts
+    );
   }
   if (recentQueuePlaybackFailureCount() >= Math.min(MAX_RECENT_AUTO_QUEUE_FAILURES, playQueue.length)) {
     return settleSourceFallbackTerminal(idx, token, '', opts);
@@ -410,15 +448,29 @@ async function skipFailedQueueItem(idx, token, message, opts) {
     return settleSourceFallbackTerminal(idx, token, '已尝试绕开受限歌曲，当前队列没有新的可播放项。', opts);
   }
   if (!opts.silent) showSourceFallbackNotice('已跳过受限歌曲', message || '未找到同名同歌手的另一个平台版本，正在播放下一首。');
-  var nextPlaybackOpts = Object.assign({}, opts.playbackOpts || { fallbackDepth: 0 }, { skipShuffleOrder: true });
+  var nextPlaybackOpts = Object.assign({}, playbackOpts, {
+    fallbackDepth: 0,
+    autoSkipCount: failedInThisAction,
+    skipShuffleOrder: true
+  });
+  await new Promise(function (resolve) { setTimeout(resolve, 40); });
   var nextStarted = await playQueueAt(nextIdx, nextPlaybackOpts);
   return nextStarted === true;
 }
 async function tryAutoPlaybackFallback(song, data, idx, token, opts) {
   opts = opts || {};
-  var skipPlaybackOpts = { fallbackDepth: 0, startupAutoplay: true };
+  var skipPlaybackOpts = Object.assign({}, opts, {
+    fallbackDepth: 0,
+    startupAutoplay: !!opts.startupAutoplay
+  });
   if (opts.resumeAt != null) skipPlaybackOpts.resumeAt = opts.resumeAt;
-  var skipOpts = opts.startupAutoplay ? { silent: true, playbackOpts: skipPlaybackOpts } : null;
+  var skipOpts = { silent: !!opts.startupAutoplay, playbackOpts: skipPlaybackOpts };
+  if (!song || song.type === 'local' || song.type === 'podcast' || song.source === 'podcast') return null;
+  if (playbackRestrictionCategory(song, data) === 'login_required') return null;
+  return await skipFailedQueueItem(idx, token, '当前酷狗歌曲不可播放，正在播放队列中的下一首。', skipOpts);
+
+  // Kept unreachable temporarily so older snapshots cannot re-enter cross-provider
+  // fallback while the surrounding compatibility helpers are phased out.
   if (opts.fallbackDepth > 0) {
     if (opts.fallbackOriginalSong && opts.fallbackCandidateSong) {
       restoreSourceFallbackQueueItem(idx, opts.fallbackOriginalSong, opts.fallbackCandidateSong, token);
@@ -456,6 +508,7 @@ async function tryAutoPlaybackFallback(song, data, idx, token, opts) {
       safeShelfRebuild('source-fallback-provisional');
       var fallbackPlaybackOpts = {
         fallbackDepth: 1,
+        autoSkipCount: Number(opts.autoSkipCount) || 0,
         startupAutoplay: !!opts.startupAutoplay,
         preserveHomeState: !!opts.preserveHomeState,
         suppressPlayFailureNotice: true,

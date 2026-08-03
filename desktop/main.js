@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell, screen, session, globalShortcut, dialog, Tray, Menu, protocol, desktopCapturer } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, screen, session, safeStorage, globalShortcut, dialog, Tray, Menu, protocol, desktopCapturer } = require('electron');
 const net = require('net');
 const http = require('http');
 const path = require('path');
@@ -12,6 +12,8 @@ const {
 } = require('./wallpaper-engine-library');
 const { WallpaperEngineRuntime } = require('./wallpaper-engine-runtime');
 const { FullDesktopModeRuntime } = require('./full-desktop-mode-runtime');
+const { KugouLiteSessionStore } = require('./kugou-lite-session-store');
+const { KugouLiteAccount } = require('./kugou-lite-account');
 const {
   LoginEasterEggGate,
   LOGIN_EASTER_EGG_GATE_VERSION,
@@ -143,6 +145,12 @@ app.setName(APP_NAME);
 const STABLE_USER_DATA_PATH = path.join(app.getPath('appData'), APP_NAME);
 fs.mkdirSync(STABLE_USER_DATA_PATH, { recursive: true });
 app.setPath('userData', STABLE_USER_DATA_PATH);
+const kugouLiteAccount = new KugouLiteAccount({
+  store: new KugouLiteSessionStore({
+    safeStorage,
+    userDataPath: STABLE_USER_DATA_PATH,
+  }),
+});
 const INITIAL_CACHE_SETTINGS = ensureCacheDirectories(readCacheSettings());
 const loginEasterEggGate = new LoginEasterEggGate({
   userDataPath: STABLE_USER_DATA_PATH,
@@ -5205,64 +5213,62 @@ ipcMain.handle('mineradio-current-fx-autosave-save', async (_event, payload = {}
   return writeCurrentFxAutosaveFile(payload || {});
 });
 
-ipcMain.handle('mineradio-login-easter-egg-status', async (event) => {
-  if (!isTrustedMainWindowIpc(event)) return { ok: false, error: 'UNTRUSTED_SENDER', unlocked: false };
-  return loginEasterEggGate.publicStatus();
+ipcMain.handle('kugou-lite-logout', async (event) => {
+  if (!isTrustedMainWindowIpc(event)) return { ok: false, error: 'UNTRUSTED_SENDER' };
+  return kugouLiteAccount.logout();
 });
 
-ipcMain.handle('mineradio-login-easter-egg-unlock', async (event, value) => {
-  if (!isTrustedMainWindowIpc(event)) return { ok: false, error: 'UNTRUSTED_SENDER', unlocked: false };
-  return loginEasterEggGate.unlock(value);
+ipcMain.handle('kugou-lite-account-status', async (event) => {
+  if (!isTrustedMainWindowIpc(event)) return { ok: false, error: 'UNTRUSTED_SENDER' };
+  return kugouLiteAccount.status();
 });
 
-ipcMain.handle('mineradio-login-easter-egg-reset', async (event) => {
-  if (!isTrustedMainWindowIpc(event)) return { ok: false, error: 'UNTRUSTED_SENDER', unlocked: false };
-  return loginEasterEggGate.resetForReplay(() => clearAllProviderLoginState('renderer-replay-reset'));
+ipcMain.handle('kugou-lite-qr-start', async (event) => {
+  if (!isTrustedMainWindowIpc(event)) return { ok: false, error: 'UNTRUSTED_SENDER' };
+  return kugouLiteAccount.startQr();
 });
 
-ipcMain.handle('netease-music-open-login', async (event) => {
-  if (!loginEasterEggGate.isUnlocked()) return loginEasterEggLockedResult();
-  return openNeteaseMusicLoginWindow(getSenderWindow(event));
+ipcMain.handle('kugou-lite-qr-check', async (event, key) => {
+  if (!isTrustedMainWindowIpc(event)) return { ok: false, error: 'UNTRUSTED_SENDER' };
+  return kugouLiteAccount.checkQr(String(key || ''));
 });
 
-ipcMain.handle('netease-music-clear-login', async () => {
-  return clearNeteaseMusicLoginSession();
+ipcMain.handle('kugou-lite-qr-cancel', async (event) => {
+  if (!isTrustedMainWindowIpc(event)) return { ok: false, error: 'UNTRUSTED_SENDER' };
+  return kugouLiteAccount.cancelQr();
 });
 
-ipcMain.handle('qq-music-open-login', async (event) => {
-  if (!loginEasterEggGate.isUnlocked()) return loginEasterEggLockedResult();
-  return openQQMusicLoginWindow(getSenderWindow(event));
+ipcMain.handle('kugou-lite-sms-send', async (event, mobile) => {
+  if (!isTrustedMainWindowIpc(event)) return { ok: false, error: 'UNTRUSTED_SENDER' };
+  return kugouLiteAccount.sendCode(String(mobile || ''));
 });
 
-ipcMain.handle('qq-music-clear-login', async () => {
-  return clearQQMusicLoginSession();
+ipcMain.handle('kugou-lite-sms-login', async (event, payload) => {
+  if (!isTrustedMainWindowIpc(event)) return { ok: false, error: 'UNTRUSTED_SENDER' };
+  const body = payload && typeof payload === 'object' ? payload : {};
+  return kugouLiteAccount.loginByCode(
+    String(body.mobile || ''),
+    String(body.code || ''),
+    String(body.userId || '')
+  );
 });
 
-ipcMain.handle('kugou-music-open-login', async (event) => {
-  if (!loginEasterEggGate.isUnlocked()) return loginEasterEggLockedResult();
-  return openKugouMusicLoginWindow(getSenderWindow(event));
+ipcMain.handle('kugou-lite-profile-refresh', async (event) => {
+  if (!isTrustedMainWindowIpc(event)) return { ok: false, error: 'UNTRUSTED_SENDER' };
+  try {
+    return await kugouLiteAccount.refreshProfile();
+  } catch (error) {
+    return {
+      ok: false,
+      error: String(error && error.code || 'KUGOU_PROFILE_FAILED'),
+      message: String(error && error.message || '酷狗用户资料刷新失败。').slice(0, 240),
+    };
+  }
 });
 
-ipcMain.handle('kugou-music-clear-login', async () => {
-  return clearKugouMusicLoginSession();
-});
-
-ipcMain.handle('qishui-music-open-login', async (event) => {
-  if (!loginEasterEggGate.isUnlocked()) return loginEasterEggLockedResult();
-  return openQishuiMusicLoginWindow(getSenderWindow(event));
-});
-
-ipcMain.handle('qishui-music-clear-login', async () => {
-  return clearQishuiMusicLoginSession();
-});
-
-ipcMain.handle('spotify-music-open-login', async (event) => {
-  if (!loginEasterEggGate.isUnlocked()) return loginEasterEggLockedResult();
-  return openSpotifyMusicLoginWindow(getSenderWindow(event));
-});
-
-ipcMain.handle('spotify-music-clear-login', async () => {
-  return clearSpotifyMusicLoginSession();
+ipcMain.handle('kugou-lite-continue-listening', async (event, limit) => {
+  if (!isTrustedMainWindowIpc(event)) return { ok: false, error: 'UNTRUSTED_SENDER' };
+  return kugouLiteAccount.continueListening(limit);
 });
 
 ipcMain.handle('mineradio-open-update-installer', async (_event, filePath) => {
@@ -5417,7 +5423,6 @@ function configureLocalServerEnvironment(port) {
   process.env.CUEFIELD_FEEDBACK_FILE = path.join(STABLE_USER_DATA_PATH, 'cuefield-feedback.jsonl');
   process.env.COOKIE_FILE = path.join(STABLE_USER_DATA_PATH, '.cookie');
   process.env.QQ_COOKIE_FILE = path.join(STABLE_USER_DATA_PATH, '.qq-cookie');
-  process.env.KUGOU_COOKIE_FILE = path.join(STABLE_USER_DATA_PATH, '.kugou-cookie');
   process.env.QISHUI_COOKIE_FILE = path.join(STABLE_USER_DATA_PATH, '.qishui-cookie');
   process.env.QISHUI_TOKEN_FILE = path.join(STABLE_USER_DATA_PATH, '.qishui-token');
   process.env.MINERADIO_LISTEN_SYNC_FILE = path.join(STABLE_USER_DATA_PATH, 'listen-sync-journal.json');
@@ -5436,7 +5441,6 @@ function configureLocalServerEnvironment(port) {
 const APP_OWNED_MIGRATION_FILES = [
   '.cookie',
   '.qq-cookie',
-  '.kugou-cookie',
   '.qishui-cookie',
   '.qishui-token',
   '.qishui-oauth.json',
@@ -5552,15 +5556,14 @@ function migrateLegacyAuthStorage() {
     console.warn('QQ cookie migration skipped:', e.message);
   }
   try {
-    const legacyKugouCookie = path.join(__dirname, '..', '.kugou-cookie');
-    if (fs.existsSync(legacyKugouCookie)) {
-      if (!fs.existsSync(process.env.KUGOU_COOKIE_FILE)) {
-        fs.copyFileSync(legacyKugouCookie, process.env.KUGOU_COOKIE_FILE);
-      }
-      fs.unlinkSync(legacyKugouCookie);
-    }
+    [
+      path.join(STABLE_USER_DATA_PATH, '.kugou-cookie'),
+      path.join(__dirname, '..', '.kugou-cookie'),
+    ].forEach((legacyKugouCookie) => {
+      if (fs.existsSync(legacyKugouCookie)) fs.unlinkSync(legacyKugouCookie);
+    });
   } catch (e) {
-    console.warn('Kugou cookie migration skipped:', e.message);
+    console.warn('Kugou plaintext credential cleanup skipped:', e.message);
   }
   try {
     const legacyQishuiCookie = path.join(__dirname, '..', '.qishui-cookie');
@@ -5638,7 +5641,7 @@ async function ensureLocalServerStarted() {
     configureLocalAppPermissions();
     configureLocalServerEnvironment(port);
     migrateLegacyAuthStorage();
-    await initializeLoginEasterEggGate();
+    await kugouLiteAccount.initialize();
 
     const serverModulePath = path.join(__dirname, '..', 'server.js');
     try { delete require.cache[require.resolve(serverModulePath)]; } catch (_) {}

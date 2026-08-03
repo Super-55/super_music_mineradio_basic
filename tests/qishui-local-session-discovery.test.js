@@ -124,7 +124,9 @@ function run() {
     const migrationListStart = main.indexOf('const APP_OWNED_MIGRATION_FILES');
     const migrationListEnd = main.indexOf('];', migrationListStart);
     const migrationList = main.slice(migrationListStart, migrationListEnd);
-    assert(migrationList.includes("'.kugou-cookie'"), 'the real Kugou login cookie must still migrate');
+    assert(!migrationList.includes("'.kugou-cookie'"), 'plaintext Kugou cookies must no longer migrate');
+    assert(main.includes("path.join(STABLE_USER_DATA_PATH, '.kugou-cookie')"));
+    assert(main.includes("console.warn('Kugou plaintext credential cleanup skipped:'"));
     assert(!migrationList.includes("'.kugou-vip-evidence.json'"), 'deprecated playback evidence must never migrate');
     assert(main.includes('function removeDeprecatedKugouVipEvidenceFiles()'));
     assert(main.includes("{ label: 'stable-user-data', file: path.join(STABLE_USER_DATA_PATH, fileName) }"));

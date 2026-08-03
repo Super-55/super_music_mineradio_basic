@@ -28,11 +28,14 @@ function normalizePlaybackQuality(value) {
   return 'hires';
 }
 function normalizePlaybackProvider(provider) {
+  if (provider === 'podcast') return 'podcast';
+  if (provider === 'local') return 'local';
   if (provider === 'qq') return 'qq';
   if (provider === 'kugou') return 'kugou';
   if (provider === 'qishui') return 'qishui';
   if (provider === 'spotify') return 'spotify';
-  return 'netease';
+  if (provider === 'netease') return 'netease';
+  return 'unknown';
 }
 function normalizePlaybackQualityForProvider(value, provider) {
   provider = normalizePlaybackProvider(provider);

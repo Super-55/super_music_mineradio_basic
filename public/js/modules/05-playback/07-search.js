@@ -162,35 +162,10 @@ function runSearchHistory(q) {
 }
 function updateSearchModeTabs() {
   var songBtn = document.getElementById('search-mode-song');
-  var neteaseBtn = document.getElementById('search-mode-netease');
-  var qqBtn = document.getElementById('search-mode-qq');
-  var kugouBtn = document.getElementById('search-mode-kugou');
-  var qishuiBtn = document.getElementById('search-mode-qishui');
-  var spotifyBtn = document.getElementById('search-mode-spotify');
   var podcastBtn = document.getElementById('search-mode-podcast');
   if (songBtn) {
     songBtn.classList.toggle('active', searchMode === 'song');
     songBtn.setAttribute('aria-selected', searchMode === 'song' ? 'true' : 'false');
-  }
-  if (neteaseBtn) {
-    neteaseBtn.classList.toggle('active', searchMode === 'netease');
-    neteaseBtn.setAttribute('aria-selected', searchMode === 'netease' ? 'true' : 'false');
-  }
-  if (qqBtn) {
-    qqBtn.classList.toggle('active', searchMode === 'qq');
-    qqBtn.setAttribute('aria-selected', searchMode === 'qq' ? 'true' : 'false');
-  }
-  if (kugouBtn) {
-    kugouBtn.classList.toggle('active', searchMode === 'kugou');
-    kugouBtn.setAttribute('aria-selected', searchMode === 'kugou' ? 'true' : 'false');
-  }
-  if (qishuiBtn) {
-    qishuiBtn.classList.toggle('active', searchMode === 'qishui');
-    qishuiBtn.setAttribute('aria-selected', searchMode === 'qishui' ? 'true' : 'false');
-  }
-  if (spotifyBtn) {
-    spotifyBtn.classList.toggle('active', searchMode === 'spotify');
-    spotifyBtn.setAttribute('aria-selected', searchMode === 'spotify' ? 'true' : 'false');
   }
   if (podcastBtn) {
     podcastBtn.classList.toggle('active', searchMode === 'podcast');
@@ -199,14 +174,12 @@ function updateSearchModeTabs() {
   if ($input) {
     $input.placeholder = searchMode === 'podcast'
       ? '搜索播客、电台...'
-      : (searchMode === 'kugou' ? '搜索酷狗音乐...' : (searchMode === 'qq' ? '搜索 QQ 音乐...' : (searchMode === 'netease' ? '搜索网易云音乐...' : '搜索歌曲、歌手...')));
+      : '搜索酷狗音乐...';
   }
-  if ($input && searchMode === 'qishui') $input.placeholder = '搜索汽水音乐匹配源...';
-  if ($input && searchMode === 'spotify') $input.placeholder = '搜索 Spotify 匹配源...';
   requestAnimationFrame(updateSearchPillGlassDisplacementMap);
 }
 function setSearchMode(mode) {
-  mode = (mode === 'podcast' || mode === 'netease' || mode === 'qq' || mode === 'kugou' || mode === 'qishui' || mode === 'spotify') ? mode : 'song';
+  mode = normalizeMineradioSearchMode(mode);
   if (searchMode === mode) return;
   searchMode = mode;
   updateSearchModeTabs();
@@ -443,42 +416,24 @@ document.addEventListener('click', function (e) {
 updateSearchModeTabs();
 
 function songProviderKey(song) {
-  if (song && (song.provider === 'spotify' || song.source === 'spotify' || song.type === 'spotify' || song.spotifyId || song.spotifyUri)) return 'spotify';
-  if (song && (song.provider === 'qq' || song.source === 'qq' || song.type === 'qq')) return 'qq';
-  if (song && (song.provider === 'qishui' || song.source === 'qishui' || song.type === 'qishui')) return 'qishui';
-  if (song && (song.provider === 'kugou' || song.source === 'kugou' || song.type === 'kugou' || song.hash || song.audioHash)) return 'kugou';
-  return 'netease';
+  return mineradioSourceKind(song);
 }
 function songSourceTagHtml(song, opts) {
-  opts = opts || {};
-  var rawKey = song && (song.resolvedPlaybackProvider || song.playbackProvider || song.audioProvider || song.providerResolved || '');
-  var key = /^(netease|qq|kugou|qishui|spotify)$/.test(String(rawKey || '')) ? String(rawKey) : songProviderKey(song);
-  var label = key === 'qq' ? 'QQ' : (key === 'kugou' ? 'KG' : (key === 'qishui' ? 'QS' : (key === 'spotify' ? 'SP' : 'NE')));
-  if (opts.switcher) {
-    return '<button type="button" class="tag-source ' + key + ' control-source-chip" title="切换音源" aria-haspopup="true" onclick="toggleControlSourceSwitcher(event)">' + label + '</button>';
-  }
+  var key = songProviderKey(song);
+  var label = key === 'kugou' ? 'KG' : (key === 'local' ? 'LOCAL' : (key === 'podcast' ? 'POD' : ''));
+  if (!label) return '';
   return '<span class="tag-source ' + key + '">' + label + '</span>';
 }
 var controlSourceSwitcherState = { open: false, loading: false, requestId: 0, anchor: null };
 function controlSourceProviders() {
-  return [
-    { key: 'netease', label: 'NE', title: '网易云' },
-    { key: 'qq', label: 'QQ', title: 'QQ音乐' },
-    { key: 'kugou', label: 'KG', title: '酷狗' },
-    { key: 'qishui', label: 'QS', title: '汽水' },
-    { key: 'spotify', label: 'SP', title: 'Spotify' }
-  ];
+  return [{ key: 'kugou', label: 'KG', title: '酷狗概念版' }];
 }
 function controlSourceProviderTitle(provider) {
   var item = controlSourceProviders().filter(function (p) { return p.key === provider; })[0];
   return item ? item.title : provider;
 }
 function controlSourceSearchUrl(provider, query) {
-  if (provider === 'qq') return '/api/qq/search?keywords=' + encodeURIComponent(query) + '&limit=8';
-  if (provider === 'kugou') return '/api/kugou/search?keywords=' + encodeURIComponent(query) + '&limit=8';
-  if (provider === 'qishui') return '/api/qishui/search?keywords=' + encodeURIComponent(query) + '&limit=8';
-  if (provider === 'spotify') return '/api/spotify/search?keywords=' + encodeURIComponent(query) + '&limit=8';
-  return '/api/search?keywords=' + encodeURIComponent(query) + '&limit=10';
+  return mineradioMusicSearchUrl(query, 8, 0);
 }
 function ensureControlSourceSwitcher() {
   var el = document.getElementById('control-source-switcher');
@@ -631,6 +586,7 @@ function toggleControlSourceSwitcher(e) {
 }
 async function switchCurrentSongSource(provider) {
   provider = normalizePlaybackProvider(provider);
+  if (provider !== 'kugou') return;
   var song = currentControlSong();
   if (!song) return;
   var currentProvider = songProviderKey(song);
@@ -751,30 +707,24 @@ function searchIntentPrefersQQ(q) {
   q = String(q || '').toLowerCase();
   return /(^|\s)qq($|\s)|qq音乐|qq音樂/.test(q);
 }
-var MUSIC_SEARCH_PROVIDER_ORDER = ['netease', 'qq', 'kugou', 'qishui', 'spotify'];
+var MUSIC_SEARCH_PROVIDER_ORDER = ['kugou'];
 function searchProviderStatus(provider) {
   if (typeof platformStatus === 'function') return platformStatus(provider);
-  if (provider === 'spotify') return spotifyLoginStatus;
-  if (provider === 'qishui') return qishuiLoginStatus;
-  if (provider === 'kugou') return kugouLoginStatus;
-  if (provider === 'qq') return qqLoginStatus;
-  return loginStatus;
+  return kugouLoginStatus;
 }
 function searchProviderIsLoggedIn(provider) {
   var st = searchProviderStatus(provider);
   return !!(st && st.loggedIn);
 }
 function searchProviderCanSearch(provider) {
+  if (provider !== 'kugou') return false;
   var st = searchProviderStatus(provider) || {};
   var capabilities = st.capabilities || {};
   if (st.searchReady === true || st.publicCatalog === true || capabilities.search === true) return true;
-  if (provider === 'spotify') return !!(st.loggedIn && !st.reauthRequired);
-  // These providers expose public catalogue metadata search. Login still controls
-  // private recommendations, collections and playback rights, not discovery.
-  return provider === 'netease' || provider === 'qq' || provider === 'kugou' || provider === 'qishui';
+  return true;
 }
 function searchModeProvider(mode) {
-  return mode === 'netease' || mode === 'qq' || mode === 'kugou' || mode === 'qishui' || mode === 'spotify' ? mode : '';
+  return normalizeMineradioSearchMode(mode) === 'song' ? 'kugou' : '';
 }
 function activeSearchProvidersForMode(mode) {
   var specific = searchModeProvider(mode);
@@ -790,12 +740,7 @@ function searchProviderLoginNotice(mode) {
   return '当前没有可用的音乐目录搜索源';
 }
 function searchProviderUrl(provider, q, limit, offset) {
-  var suffix = '&limit=' + limit + '&offset=' + Math.max(0, Number(offset) || 0);
-  if (provider === 'qq') return '/api/qq/search?keywords=' + encodeURIComponent(q) + suffix;
-  if (provider === 'kugou') return '/api/kugou/search?keywords=' + encodeURIComponent(q) + suffix;
-  if (provider === 'qishui') return '/api/qishui/search?keywords=' + encodeURIComponent(q) + suffix;
-  if (provider === 'spotify') return '/api/spotify/search?keywords=' + encodeURIComponent(q) + suffix;
-  return '/api/search?keywords=' + encodeURIComponent(q) + suffix;
+  return mineradioMusicSearchUrl(q, limit, offset);
 }
 function simpleSearchNorm(text) {
   return String(text || '').toLowerCase()

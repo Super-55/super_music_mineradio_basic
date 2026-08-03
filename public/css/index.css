@@ -17822,3 +17822,184 @@ body.desktop-shell.desktop-wallpaper-mode.diy-mode #bottom-bar.stage-mode {
     width: calc(100vw - var(--desktop-safe-left) - var(--desktop-safe-right) - 24px);
   }
 }
+
+/* ---------- Home dashboard: unified page scroll and balanced proportions ---------- */
+#empty-home {
+  box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, .24) transparent;
+}
+
+#empty-home::-webkit-scrollbar {
+  width: 6px;
+}
+
+#empty-home::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#empty-home::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .24);
+}
+
+#empty-home::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, .38);
+}
+
+@media (min-width:761px) {
+  #empty-home .empty-home-shell {
+    height: auto;
+    min-height: 100%;
+    grid-template-columns: minmax(286px, .76fr) minmax(0, 2.24fr);
+    grid-template-rows: clamp(300px, 39vh, 360px) auto;
+    align-content: start;
+    overflow: visible;
+    padding-right: 7px;
+  }
+
+  #empty-home .home-hero {
+    grid-column: 1;
+    grid-row: 1;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+  }
+
+  #empty-home .daily-review-card {
+    min-height: 0;
+    padding: clamp(22px, 2.4vw, 32px);
+  }
+
+  #empty-home .daily-review-time {
+    font-size: clamp(42px, 4.2vw, 58px);
+  }
+
+  #empty-home .daily-review-quote {
+    margin-top: 18px;
+    font-size: clamp(18px, 1.8vw, 27px);
+  }
+
+  #empty-home .daily-review-actions {
+    margin-top: 18px;
+  }
+
+  #empty-home .home-grid.home-quick-grid {
+    grid-column: 2;
+    grid-row: 1;
+    grid-template-columns: minmax(300px, 1.7fr) repeat(3, minmax(132px, 1fr));
+    height: 100%;
+    min-height: 0;
+  }
+
+  #empty-home .home-grid.home-quick-grid .home-card,
+  #empty-home .home-grid.home-quick-grid .home-card-featured,
+  #empty-home .home-grid.home-quick-grid .home-card-quick {
+    box-sizing: border-box;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  #empty-home .home-grid.home-quick-grid .home-card-featured .home-card-title {
+    max-width: calc(100% - 112px);
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: clamp(19px, 1.65vw, 24px);
+    line-height: 1.12;
+    -webkit-line-clamp: 5;
+    -webkit-box-orient: vertical;
+  }
+
+  #empty-home .home-grid.home-quick-grid .home-card-featured .home-card-sub {
+    max-width: calc(100% - 112px);
+  }
+
+  #empty-home .home-grid.home-quick-grid .home-card-featured .home-card-art {
+    width: 96px;
+    height: 96px;
+    border-radius: 22px;
+  }
+
+  #empty-home .home-insight-rail {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    min-height: auto;
+    padding: 0 0 20px;
+    overflow: visible;
+    scrollbar-gutter: auto;
+  }
+}
+
+@media (min-width:1061px) and (max-width:1120px) {
+  #empty-home .empty-home-shell {
+    grid-template-columns: minmax(250px, .72fr) minmax(0, 2.28fr);
+    grid-template-rows: clamp(286px, 37vh, 330px) auto;
+  }
+
+  #empty-home .home-grid.home-quick-grid {
+    grid-template-columns: minmax(230px, 1.45fr) repeat(3, minmax(104px, 1fr));
+  }
+
+  #empty-home .home-grid.home-quick-grid .home-card-featured .home-card-title,
+  #empty-home .home-grid.home-quick-grid .home-card-featured .home-card-sub {
+    max-width: calc(100% - 88px);
+  }
+
+  #empty-home .home-grid.home-quick-grid .home-card-featured .home-card-art {
+    width: 76px;
+    height: 76px;
+    border-radius: 18px;
+  }
+}
+
+@media (min-width:761px) and (max-width:1060px) {
+  #empty-home .empty-home-shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: clamp(286px, 37vh, 330px) auto auto;
+  }
+
+  #empty-home .home-hero {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  #empty-home .home-grid.home-quick-grid {
+    grid-column: 1;
+    grid-row: 2;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    height: auto;
+  }
+
+  #empty-home .home-grid.home-quick-grid .home-card,
+  #empty-home .home-grid.home-quick-grid .home-card-featured,
+  #empty-home .home-grid.home-quick-grid .home-card-quick {
+    height: auto;
+    min-height: 138px;
+  }
+
+  #empty-home .home-insight-rail {
+    grid-column: 1;
+    grid-row: 3;
+  }
+}
+
+@media (max-width:760px) {
+  #empty-home {
+    padding-right: 4px;
+  }
+
+  #empty-home .empty-home-shell {
+    height: auto;
+    min-height: 100%;
+    overflow: visible;
+  }
+
+  #empty-home .home-insight-rail {
+    overflow: visible;
+  }
+}

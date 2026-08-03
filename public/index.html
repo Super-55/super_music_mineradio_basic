@@ -109,13 +109,7 @@
         </div>
         <div id="search-mode-tabs" class="search-mode-tabs" role="tablist" aria-label="Search mode">
           <button id="search-mode-song" class="active" type="button" onclick="setSearchMode('song')"
-            aria-selected="true">All</button>
-          <button id="search-mode-netease" type="button" onclick="setSearchMode('netease')"
-            aria-selected="false">NE</button>
-          <button id="search-mode-qq" type="button" onclick="setSearchMode('qq')" aria-selected="false">QQ</button>
-          <button id="search-mode-kugou" type="button" onclick="setSearchMode('kugou')" aria-selected="false">KG</button>
-          <button id="search-mode-qishui" type="button" onclick="setSearchMode('qishui')" aria-selected="false">QS</button>
-          <button id="search-mode-spotify" type="button" onclick="setSearchMode('spotify')" aria-selected="false">SP</button>
+            aria-selected="true">酷狗</button>
           <button id="search-mode-podcast" type="button" onclick="setSearchMode('podcast')"
             aria-selected="false">Podcast</button>
         </div>
@@ -291,11 +285,7 @@
         </div>
         <div id="home-platform-recommend-tabs" class="home-platform-recommend-tabs" role="tablist"
           aria-label="推荐平台">
-          <button type="button" role="tab" data-home-recommend-source="netease" aria-selected="true">网易云</button>
-          <button type="button" role="tab" data-home-recommend-source="qishui" aria-selected="false">汽水</button>
-          <button type="button" role="tab" data-home-recommend-source="qq" aria-selected="false">QQ</button>
-          <button type="button" role="tab" data-home-recommend-source="kugou" aria-selected="false">酷狗</button>
-          <button type="button" role="tab" data-home-recommend-source="spotify" aria-selected="false">Spotify</button>
+          <button type="button" role="tab" data-home-recommend-source="kugou" aria-selected="true">酷狗概念版</button>
         </div>
         <div id="home-platform-recommend-status" class="home-platform-recommend-status" role="status"
           aria-live="polite"></div>
@@ -1049,7 +1039,7 @@
       </div>
       <div id="pl-pane" style="display:none">
         <div class="queue-toolbar">
-          <div class="queue-chip">登录后显示网易云 / QQ 歌单</div>
+          <div class="queue-chip">登录后同步酷狗概念版歌单</div>
           <button class="fx-mini-btn ghost" onclick="refreshUserPlaylists(true)"
             style="height:26px;padding:0 10px;font-size:11px">刷新</button>
         </div>
@@ -1386,116 +1376,43 @@
     <div id="login-modal" class="modal-mask">
       <div class="modal dual-login-modal">
         <div class="login-panel-head">
-          <div><b>登录接入</b><small>拖接口端口到 MR</small></div>
-          <button id="login-reset-all-btn" class="login-reset-all-btn" type="button"
-            onclick="logoutAllAccountsAndResetEasterEgg()" title="清除所有平台登录并重新锁定彩蛋">退出登录</button>
+          <div><b>登录酷狗概念版</b><small>安全同步资料、歌单与收藏</small></div>
           <button class="login-panel-close" type="button" onclick="closeLoginModal()">×</button>
         </div>
-        <section id="login-easter-egg-gate" class="login-easter-egg-gate" aria-hidden="true">
-          <button id="login-easter-eye-trigger" class="login-easter-eye-trigger" type="button"
-            onclick="handleLoginEasterEggTap()" aria-label="轻触大小眼">
-            <span class="login-easter-eyes" aria-hidden="true">
-              <i class="login-easter-eye login-easter-eye-big"></i>
-              <i class="login-easter-eye login-easter-eye-small"></i>
-            </span>
-          </button>
-          <div id="login-easter-hint" class="login-easter-hint" aria-live="polite"></div>
-          <div id="login-easter-egg-wish" class="login-easter-egg-wish">
-            <h1 id="login-easter-egg-wish-title"></h1>
-            <div class="login-easter-input-shell">
-              <div id="login-easter-egg-cells" class="login-easter-cells" aria-hidden="true">
-                <span class="login-easter-cell"></span>
-                <span class="login-easter-cell"></span>
-                <span class="login-easter-cell"></span>
-                <span class="login-easter-cell"></span>
-              </div>
-              <input id="login-easter-egg-input" class="login-easter-input" type="text"
-                inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false"
-                aria-label="输入四个字的愿望">
-            </div>
-            <div id="login-easter-status" class="login-easter-status" aria-live="polite"></div>
-          </div>
-        </section>
-        <div id="login-node-graph" class="login-node-graph" data-provider="netease">
-          <svg id="login-workflow-svg" class="workflow-link-layer login-link-layer" aria-hidden="true"></svg>
-          <div class="login-platform-tabs login-node-providers" id="login-platform-tabs">
-            <button id="login-provider-netease" class="netease active workflow-node" type="button" data-login-provider="netease"
-              onclick="selectLoginProviderNode('netease')"><span class="provider-logo">NE</span><b>网易云</b><small>官方扫码 / Cookie</small><span class="flow-port out" data-login-provider-output="netease" title="拖到 MR 接入口"></span></button>
-            <button id="login-provider-qq" class="qq workflow-node" type="button" data-login-provider="qq" onclick="selectLoginProviderNode('qq')"><span
-                class="provider-logo">QQ</span><b>QQ 音乐</b><small>官方扫码 / Cookie</small><span class="flow-port out" data-login-provider-output="qq" title="拖到 MR 接入口"></span></button>
-            <button id="login-provider-kugou" class="kugou workflow-node" type="button" data-login-provider="kugou" onclick="selectLoginProviderNode('kugou')"><span
-                class="provider-logo">KG</span><b>酷狗音乐</b><small>官方窗口 / Cookie</small><span class="flow-port out" data-login-provider-output="kugou" title="拖到 MR 接入口"></span></button>
-            <button id="login-provider-qishui" class="qishui workflow-node" type="button" data-login-provider="qishui" onclick="selectLoginProviderNode('qishui')"><span
-                class="provider-logo">QS</span><b>汽水音乐</b><small>本地会话 / PC 客户端</small><span class="flow-port out" data-login-provider-output="qishui" title="拖到 MR 接入口"></span></button>
-            <button id="login-provider-spotify" class="spotify workflow-node" type="button" data-login-provider="spotify" onclick="selectLoginProviderNode('spotify')"><span
-                class="provider-logo">SP</span><b>Spotify</b><small>官方 OAuth</small><span class="flow-port out" data-login-provider-output="spotify" title="拖到 MR 接入口"></span></button>
-          </div>
-          <div class="login-node-hub workflow-node" data-login-node="mr">
-            <span class="flow-port in" data-login-mr-target="mr" title="MR 接入口"></span>
-            <span class="login-node-orb">MR</span>
-            <div class="login-node-copy"><b>MR</b><small>等待接入</small></div>
-            <div class="login-mode-nodes">
-              <button id="login-mode-official" class="login-mode-node active workflow-node" type="button" data-login-mode="official"
-                onclick="selectLoginMode('official')"><span class="provider-logo">QR</span><b>扫码</b><small>官方窗口</small></button>
-              <button id="login-mode-cookie" class="login-mode-node workflow-node" type="button" data-login-mode="cookie"
-                onclick="selectLoginMode('cookie')"><span class="provider-logo">CK</span><b>Cookie</b><small>保存会话</small></button>
-            </div>
-          </div>
-        </div>
-        <div id="login-auth-drawer" class="login-auth-drawer">
+        <div id="login-auth-drawer" class="login-auth-drawer show">
           <div class="login-auth-copy">
-            <h2 id="login-modal-title">扫码登录网易云音乐</h2>
-            <div id="login-modal-desc" class="desc">使用 <b>网易云音乐 App</b> 扫码，可同步歌单、红心与播客。</div>
-            <div id="qr-status">拖动接口到 MR 接入口后开始登录。</div>
+            <h2 id="login-modal-title">扫码登录</h2>
+            <div id="login-modal-desc" class="desc">使用 <b>酷狗概念版 App</b> 扫码并确认登录。令牌仅由桌面主进程加密保存。</div>
+            <div id="qr-status" class="preview" aria-live="polite">正在读取登录状态…</div>
           </div>
-          <div class="login-auth-body">
-            <div id="qr-shell" class="qr-shell">
-              <img id="qr-img" src="" alt="">
-              <button id="qq-web-login-card" class="qq-login-mark" type="button"
-                onclick="openProviderWebLogin()"><b>QQ</b><span>打开官方扫码窗口</span></button>
+          <div class="login-mode-nodes" style="margin:14px 0">
+            <button id="kugou-lite-mode-qr" class="login-mode-node active" type="button"
+              onclick="selectKugouLiteLoginMode('qr')"><span class="provider-logo">QR</span><b>扫码登录</b><small>默认方式</small></button>
+            <button id="kugou-lite-mode-sms" class="login-mode-node" type="button"
+              onclick="selectKugouLiteLoginMode('sms')"><span class="provider-logo">SMS</span><b>短信登录</b><small>备用方式</small></button>
+          </div>
+          <div id="kugou-lite-qr-pane" class="login-auth-body">
+            <div id="qr-shell" class="qr-shell"><img id="qr-img" src="" alt="酷狗概念版登录二维码"></div>
+          </div>
+          <div id="kugou-lite-sms-pane" class="qq-cookie-panel show" style="display:none">
+            <input id="kugou-lite-mobile" class="qq-cookie-input" type="tel" inputmode="numeric"
+              autocomplete="tel" maxlength="11" placeholder="11 位中国大陆手机号" style="min-height:44px">
+            <div class="qq-cookie-actions" style="margin-top:10px">
+              <input id="kugou-lite-code" class="qq-cookie-input" type="text" inputmode="numeric"
+                autocomplete="one-time-code" maxlength="8" placeholder="短信验证码" style="min-height:44px">
+              <button id="kugou-lite-send-code" class="modal-btn" type="button"
+                onclick="sendKugouLiteSmsCode()">发送验证码</button>
             </div>
-            <div id="qq-cookie-panel" class="qq-cookie-panel">
-              <textarea id="qq-cookie-input" class="qq-cookie-input" spellcheck="false" autocomplete="off"
-                placeholder="uin=...; qqmusic_key=...; qm_keyst=..."></textarea>
-              <div class="qq-cookie-actions">
-                <div class="qq-cookie-note">从 y.qq.com 的登录会话导入。</div>
-                <button id="qq-cookie-save-btn" class="modal-btn primary" type="button"
-                  onclick="submitQQCookieLogin()">保存</button>
-              </div>
-            </div>
+            <input id="kugou-lite-userid" class="qq-cookie-input" type="text" inputmode="numeric"
+              autocomplete="off" placeholder="可选：同手机号多账户时填写用户 ID" style="min-height:44px;margin-top:10px">
+            <div class="qq-cookie-note">若酷狗要求额外安全验证，请在官方客户端完成确认后再试；本应用不会模拟或绕过验证。</div>
           </div>
           <div class="btn-row login-auth-actions">
-            <button class="modal-btn" onclick="skipLoginAndFocusSearch()">先搜索一首歌</button>
-            <button id="qq-cookie-toggle-btn" class="modal-btn" type="button"
-              onclick="toggleQQCookiePanel()">手动导入</button>
-            <button id="refresh-qr-btn" class="modal-btn primary" onclick="startSelectedLoginConnection()">开始登录</button>
+            <button class="modal-btn" onclick="skipLoginAndFocusSearch()">暂不登录</button>
+            <button id="refresh-qr-btn" class="modal-btn primary" onclick="startSelectedLoginConnection()">刷新二维码</button>
           </div>
         </div>
       </div>
-    </div>
-
-    <div id="login-easter-unlock-cinematic" class="login-easter-unlock-cinematic" role="button" tabindex="-1"
-      aria-hidden="true" aria-label="点击继续" onclick="dismissLoginEasterEggCinematic()">
-      <div id="login-easter-unlock-phrase" class="login-easter-unlock-phrase" aria-hidden="true">
-        <span style="--float-duration:3.8s;--float-delay:-.7s;--float-distance:9px"></span>
-        <span style="--float-duration:4.4s;--float-delay:-2.1s;--float-distance:13px"></span>
-        <span style="--float-duration:3.5s;--float-delay:-1.4s;--float-distance:8px"></span>
-        <span style="--float-duration:4.1s;--float-delay:-2.8s;--float-distance:12px"></span>
-      </div>
-    </div>
-
-    <div id="login-easter-achievement" class="login-easter-achievement" role="status" aria-live="polite"
-      aria-label="已达成成就">
-      <span class="login-easter-achievement-icon" aria-hidden="true">
-        <span class="login-easter-achievement-pixel-eyes">
-          <i class="login-easter-achievement-pixel-eye pixel-eye-big"></i>
-          <i class="login-easter-achievement-pixel-eye pixel-eye-small"></i>
-        </span>
-      </span>
-      <span class="login-easter-achievement-copy">
-        <small>已达成成就</small>
-        <b id="login-easter-achievement-title"></b>
-      </span>
     </div>
 
     <!-- 音频路由牵线面板 -->
@@ -1520,34 +1437,25 @@
     <!-- 用户模态 -->
     <div id="user-modal" class="modal-mask">
       <div class="modal dual-user-modal">
-        <h2>账号信息</h2>
-        <div id="account-provider-chip" class="account-provider-chip netease"><span
-            class="account-source-dot netease"></span><span>网易云音乐</span></div>
+        <h2>酷狗概念版账户</h2>
+        <div id="account-provider-chip" class="account-provider-chip kugou"><span
+            class="account-source-dot kugou"></span><span>酷狗概念版</span></div>
         <img id="user-modal-avatar" src=""
           style="width:72px;height:72px;border-radius:50%;margin:0 auto 12px;object-fit:cover;background:rgba(255,255,255,0.1);display:block">
         <div id="user-modal-name" style="font-size:15px;margin-bottom:4px"></div>
         <div id="user-modal-vip"
-          style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:20px;letter-spacing:.5px"></div>
-        <div class="user-platform-tabs" id="user-platform-tabs">
-          <button id="user-provider-netease" class="netease active" type="button"
-            onclick="setActiveAccountProvider('netease')">网易云</button>
-          <button id="user-provider-qq" class="qq" type="button" onclick="setActiveAccountProvider('qq')">QQ 音乐</button>
-          <button id="user-provider-kugou" class="kugou" type="button" onclick="setActiveAccountProvider('kugou')">酷狗音乐</button>
-          <button id="user-provider-qishui" class="qishui" type="button" onclick="setActiveAccountProvider('qishui')">汽水音乐</button>
-          <button id="user-provider-spotify" class="spotify" type="button" onclick="setActiveAccountProvider('spotify')">Spotify</button>
-          <button id="user-provider-both" class="both" type="button" onclick="enableDualAccountView()">我两个都要</button>
+          style="font-size:11px;color:rgba(86,224,255,.72);margin-bottom:20px;letter-spacing:.5px"></div>
+        <div id="kugou-vip-claim-panel" class="account-hint"
+          style="display:none;margin-bottom:12px;text-align:left">
+          <div id="kugou-vip-claim-status" aria-live="polite">正在读取今日畅听权益…</div>
+          <button id="kugou-vip-claim-btn" class="modal-btn primary" type="button"
+            onclick="claimKugouDailyVip()" style="width:100%;margin-top:10px">领取今日 VIP</button>
         </div>
-        <div class="account-modal-actions">
-          <button id="account-add-netease" class="modal-btn" onclick="openProviderLogin('netease')">补登网易云</button>
-          <button id="account-add-qq" class="modal-btn" onclick="openProviderLogin('qq')">补登 QQ 音乐</button>
-          <button id="account-add-kugou" class="modal-btn" onclick="openProviderLogin('kugou')">补登酷狗音乐</button>
-          <button id="account-add-qishui" class="modal-btn" onclick="openProviderLogin('qishui')">导入汽水登录态</button>
-          <button id="account-add-spotify" class="modal-btn" onclick="openProviderLogin('spotify')">连接 Spotify</button>
-        </div>
-        <div id="account-hint" class="account-hint">QQ 音乐真实登录暂未接入，当前先预览双平台账号交互。</div>
+        <div id="account-hint" class="account-hint">登录会话由 Windows 安全存储加密保护，不会写入网页存储或明文 Cookie 文件。</div>
         <div class="btn-row">
           <button class="modal-btn" onclick="closeUserModal()">关闭</button>
-          <button id="account-logout-btn" class="modal-btn primary" onclick="logoutActiveAccount()">退出当前平台</button>
+          <button class="modal-btn" onclick="openProviderLogin('kugou')">重新登录</button>
+          <button id="account-logout-btn" class="modal-btn primary" onclick="logoutActiveAccount()">退出登录</button>
         </div>
       </div>
     </div>
