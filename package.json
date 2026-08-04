@@ -10,10 +10,11 @@
   "scripts": {
     "test": "node tests/kugou-lite-account.test.js && node tests/kugou-lite-playlist-protocol.test.js && node tests/kugou-single-account-ui.test.js && node tests/kugou-playback-resilience.test.js && node --test tests/kugou-lyric-translation.test.js tests/kugou-lyrics-renderer-policy.test.js tests/kugou-only-source-policy.test.js tests/kugou-only-playback-policy.test.js tests/online-music-route-policy.test.js",
     "start": "electron .",
-    "build:win": "electron-builder --win nsis --publish never && npm run test:installer-manifest",
+    "build:win": "electron-builder --win nsis --publish never && npm run test:installer-manifest && npm run test:packed-runtime",
     "build:win:dir": "electron-builder --win dir",
     "build:win:internal-beta": "electron-builder --config electron-builder.internal-beta.json --win nsis --publish never",
     "test:installer-manifest": "node --test tests/installer-manifest.test.js",
+    "test:packed-runtime": "node --test tests/packed-runtime-dependencies.test.js",
     "release:audit": "node scripts/audit-release-privacy.js dist/win-unpacked/resources/app",
     "release:checksum": "node scripts/create-release-checksum.js dist/super_mineradio_s.exe"
   },
@@ -34,6 +35,7 @@
       "build/**/*",
       "cuefield/**/*",
       "server.js",
+      "online-music-policy.js",
       "*-api.js",
       "kugou-account-bridge.js",
       "qishui-audio-decryptor/**/*",
@@ -110,6 +112,7 @@
     "music-metadata": "11.14.0"
   },
   "devDependencies": {
+    "acorn": "^8.15.0",
     "electron": "^42.4.1",
     "electron-builder": "^26.15.3",
     "pe-library": "^0.4.1",
