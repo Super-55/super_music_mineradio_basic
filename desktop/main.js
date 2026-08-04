@@ -15,6 +15,11 @@ const { FullDesktopModeRuntime } = require('./full-desktop-mode-runtime');
 const { KugouLiteSessionStore } = require('./kugou-lite-session-store');
 const { KugouLiteAccount } = require('./kugou-lite-account');
 const {
+  planGraphicsFallback,
+  readGraphicsState,
+  writeGraphicsState,
+} = require('./graphics-startup-policy');
+const {
   LoginEasterEggGate,
   LOGIN_EASTER_EGG_GATE_VERSION,
   LOGIN_EASTER_EGG_STATE_FILE,
@@ -114,6 +119,7 @@ const CURRENT_FX_AUTOSAVE_FILE = 'current-fx-autosave.json';
 const CURRENT_FX_AUTOSAVE_MAX_BYTES = 12 * 1024 * 1024;
 const STARTUP_ERROR_LOG_FILE = 'startup-error.log';
 const STARTUP_STATE_FILE = 'startup-state.json';
+const GRAPHICS_MODE_FILE = 'graphics-mode.json';
 const STARTUP_SERVER_TIMEOUT_MS = 10000;
 const STARTUP_HTTP_TIMEOUT_MS = 8000;
 const STARTUP_NAVIGATION_TIMEOUT_MS = 15000;
@@ -145,6 +151,10 @@ app.setName(APP_NAME);
 const STABLE_USER_DATA_PATH = path.join(app.getPath('appData'), APP_NAME);
 fs.mkdirSync(STABLE_USER_DATA_PATH, { recursive: true });
 app.setPath('userData', STABLE_USER_DATA_PATH);
+const GRAPHICS_MODE_PATH = path.join(STABLE_USER_DATA_PATH, GRAPHICS_MODE_FILE);
+let graphicsBootState = readGraphicsState(GRAPHICS_MODE_PATH);
+let graphicsFallbackRelaunchScheduled = false;
+if (graphicsBootState.mode === 'software') app.disableHardwareAcceleration();
 const kugouLiteAccount = new KugouLiteAccount({
   store: new KugouLiteSessionStore({
     safeStorage,
@@ -482,8 +492,10 @@ try {
   console.warn('[CacheSettings] Chromium cache path fallback:', error.message);
 }
 
-const CHROMIUM_SAFE_PERFORMANCE_SWITCHES = [
+const CHROMIUM_ALWAYS_SWITCHES = [
   ['autoplay-policy', 'no-user-gesture-required'],
+];
+const CHROMIUM_HARDWARE_PERFORMANCE_SWITCHES = [
   ['enable-gpu-rasterization'],
   ['enable-oop-rasterization'],
   ['enable-zero-copy'],
@@ -501,9 +513,12 @@ function appendChromiumSwitch(name, value) {
   if (value == null) app.commandLine.appendSwitch(name);
   else app.commandLine.appendSwitch(name, value);
 }
-for (const [name, value] of CHROMIUM_SAFE_PERFORMANCE_SWITCHES) appendChromiumSwitch(name, value);
-for (const [name, value, envName] of CHROMIUM_OPT_IN_PERFORMANCE_SWITCHES) {
-  if (process.env[envName] === '1') appendChromiumSwitch(name, value);
+for (const [name, value] of CHROMIUM_ALWAYS_SWITCHES) appendChromiumSwitch(name, value);
+if (graphicsBootState.mode === 'hardware') {
+  for (const [name, value] of CHROMIUM_HARDWARE_PERFORMANCE_SWITCHES) appendChromiumSwitch(name, value);
+  for (const [name, value, envName] of CHROMIUM_OPT_IN_PERFORMANCE_SWITCHES) {
+    if (process.env[envName] === '1') appendChromiumSwitch(name, value);
+  }
 }
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 
@@ -4586,6 +4601,65 @@ ipcMain.on('mineradio-full-desktop-pointer-route', (event, payload = {}) => {
 
 ipcMain.handle('mineradio-get-gpu-diagnostics', () => {
   return getGpuDiagnostics();
+});
+
+ipcMain.handle('mineradio-graphics-boot-mode', (event) => {
+  if (!isTrustedMainWindowIpc(event)) {
+    return { ok: false, mode: 'hardware', code: 'MR-GPU-UNTRUSTED' };
+  }
+  return {
+    ok: true,
+    mode: graphicsBootState.mode,
+    reason: graphicsBootState.reason,
+  };
+});
+
+ipcMain.handle('mineradio-graphics-fallback-request', (event, payload = {}) => {
+  if (!isTrustedMainWindowIpc(event)) {
+    return { ok: false, restarting: false, mode: graphicsBootState.mode, code: 'MR-GPU-UNTRUSTED' };
+  }
+  if (graphicsFallbackRelaunchScheduled) {
+    return { ok: true, restarting: true, mode: 'software', code: 'MR-GPU-SOFTWARE-RESTART' };
+  }
+
+  const plan = planGraphicsFallback(graphicsBootState.mode);
+  if (!plan.restart) {
+    return { ok: false, restarting: false, mode: plan.mode, code: plan.code };
+  }
+
+  try {
+    graphicsBootState = writeGraphicsState(GRAPHICS_MODE_PATH, {
+      mode: 'software',
+      reason: payload && payload.code,
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      restarting: false,
+      mode: graphicsBootState.mode,
+      code: 'MR-GPU-STATE-WRITE-FAILED',
+      error: String(error && error.message || error || '').slice(0, 240),
+    };
+  }
+
+  graphicsFallbackRelaunchScheduled = true;
+  setTimeout(() => {
+    try {
+      app.relaunch();
+      app.exit(0);
+    } catch (error) {
+      graphicsFallbackRelaunchScheduled = false;
+      console.error('[GraphicsStartup] software relaunch failed:', error && error.message || error);
+    }
+  }, 220);
+  return { ok: true, restarting: true, mode: plan.mode, code: plan.code };
+});
+
+ipcMain.handle('mineradio-startup-failure-quit', (event) => {
+  if (!isTrustedMainWindowIpc(event)) return { ok: false, code: 'MR-GPU-UNTRUSTED' };
+  appQuitting = true;
+  setTimeout(() => app.exit(0), 40);
+  return { ok: true };
 });
 
 ipcMain.handle('mineradio-memory-get-snapshot', async () => {

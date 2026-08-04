@@ -665,3 +665,7 @@ function animate() {
   if (perfProbe && perfProbe.mark) perfProbe.mark('frame.total', frameCostMs);
 }
 requestMainLoopAnimationFrame();
+if (window.MineradioGraphicsBootstrap
+  && typeof window.MineradioGraphicsBootstrap.markStartupComplete === 'function') {
+  window.MineradioGraphicsBootstrap.markStartupComplete();
+}

@@ -174,7 +174,18 @@ function getRenderLoadTier() {
   if (cssPixels >= 3200000 || renderPixels >= 3600000) return 1;
   return 0;
 }
-var renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, powerPreference: 'high-performance' });
+var rendererResult = MineradioGraphicsRuntime.createWebGLRenderer(THREE, {
+  antialias: false,
+  alpha: true,
+  powerPreference: 'high-performance'
+});
+if (!rendererResult.ok) {
+  MineradioGraphicsBootstrap.handleWebGLFailure(rendererResult.error);
+  var rendererStartupError = new Error(rendererResult.error.message);
+  rendererStartupError.code = rendererResult.error.code;
+  throw rendererStartupError;
+}
+var renderer = rendererResult.renderer;
 renderer.setClearColor(0x000000, 0);
 renderer.setPixelRatio(getRenderPixelRatio());
 renderer.setSize(innerWidth, innerHeight);

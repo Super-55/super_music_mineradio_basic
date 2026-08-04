@@ -9,6 +9,12 @@ contextBridge.exposeInMainWorld('desktopWindow', {
   exitFullscreenWindowed: () => ipcRenderer.invoke('desktop-window-exit-fullscreen-windowed'),
   getState: () => ipcRenderer.invoke('desktop-window-get-state'),
   getGpuDiagnostics: () => ipcRenderer.invoke('mineradio-get-gpu-diagnostics'),
+  getGraphicsBootMode: () => ipcRenderer.invoke('mineradio-graphics-boot-mode'),
+  requestGraphicsFallback: (payload) => ipcRenderer.invoke('mineradio-graphics-fallback-request', {
+    code: payload && payload.code === 'MR-GPU-WEBGL-CONTEXT' ? payload.code : 'MR-GPU-WEBGL-CONTEXT',
+    message: String(payload && payload.message || '').slice(0, 500),
+  }),
+  quitForStartupFailure: () => ipcRenderer.invoke('mineradio-startup-failure-quit'),
   getMemorySnapshot: () => ipcRenderer.invoke('mineradio-memory-get-snapshot'),
   configureMemoryReduct: (payload) => ipcRenderer.invoke('mineradio-memory-configure-auto', payload || {}),
   trimAppMemory: (payload) => ipcRenderer.invoke('mineradio-memory-trim-app', payload || {}),
